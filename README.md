@@ -1,183 +1,102 @@
-# Autonomous Agent Platform
+# ModelX: Autonomous Agent Platform
 
-> Phase 1 AGI-Inspired Autonomous Agent — A production-ready cognitive agent combining LLM reasoning, long-term memory, RAG, task planning, tool usage, reflection, and multi-agent coordination.
+[![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-00a393.svg)](https://fastapi.tiangolo.com)
+[![LangGraph](https://img.shields.io/badge/LangGraph-Enabled-orange.svg)](https://python.langchain.com/docs/langgraph)
 
-**This system is NOT intended to be AGI.** It is a foundational architecture incorporating the major components commonly considered prerequisites for AGI research.
+> **ModelX** is a production-grade, AGI-inspired cognitive architecture designed to bridge the gap between reactive AI assistants and proactive, continuous-learning autonomous agents.
 
 ---
 
-## Architecture
+## 📖 Documentation
 
-```
-USER
-  ↓
-ORCHESTRATOR AGENT (LangGraph StateGraph)
-  ↓
-  ├── MEMORY AGENT      → Redis (short-term) + PostgreSQL + Qdrant (long-term)
-  ├── RESEARCH AGENT    → ArXiv, Web Search, Wikipedia, Knowledge Base
-  ├── EXECUTION AGENT   → Sandboxed Python, API Calls, File Ops, SQL
-  └── REFLECTION AGENT  → Root Cause Analysis, Improvement Strategies
-  ↓
-Vector Database (Qdrant) · Knowledge Store (PostgreSQL) · Tools · External APIs
-```
+Welcome to the ModelX Documentation. This platform is designed to be maintained by large engineering teams and deployed in highly scalable environments. The documentation is split into logical domains:
 
-## Tech Stack
+### Part 1: Overview & Architecture
+[Read the Overview & Architecture Docs](./docs/01_overview_and_architecture.md)
+* **Section 1**: Executive Summary
+* **Section 2**: System Overview
+* **Section 3**: Complete Architecture (Mermaid Diagrams)
+* **Section 4**: Directory Structure
 
-| Component | Technology |
-|-----------|-----------|
-| **Orchestration** | LangGraph (StateGraph with checkpointing) |
-| **LLM** | Claude Sonnet (Anthropic API) |
-| **Embeddings** | OpenAI text-embedding-3-large (3072 dims) |
-| **Database** | PostgreSQL 17 (via SQLAlchemy 2.0 async) |
-| **Vector DB** | Qdrant |
-| **Cache** | Redis 7 |
-| **API** | FastAPI |
-| **Migrations** | Alembic |
-| **Containerization** | Docker Compose |
+### Part 2: Data & Agent Models
+[Read the Database & Agents Docs](./docs/02_database_and_agents.md)
+* **Section 5**: Database Documentation & ER Diagrams
+* **Section 6**: Agent Documentation (Orchestrator, Research, Execution, etc.)
 
-## Project Structure
+### Part 3: Memory & RAG Systems
+[Read the Memory & RAG Docs](./docs/03_memory_and_rag.md)
+* **Section 7**: Memory System Documentation (Episodic, Semantic, Procedural)
+* **Section 8**: Retrieval-Augmented Generation (RAG) Documentation
 
-```
-├── src/
-│   ├── agents/           # LangGraph agent implementations
-│   │   ├── orchestrator.py   # Central StateGraph coordinator
-│   │   ├── memory_agent.py   # Short/long-term memory ops
-│   │   ├── research_agent.py # Multi-source research pipeline
-│   │   ├── execution_agent.py # Sandboxed code execution
-│   │   ├── reflection_agent.py # Post-execution analysis
-│   │   └── state.py          # Shared TypedDict state
-│   ├── api/              # FastAPI application
-│   │   ├── main.py           # App factory & lifespan
-│   │   ├── auth.py           # JWT + API key auth
-│   │   ├── middleware.py     # CORS, request logging
-│   │   ├── dependencies.py   # DI container
-│   │   ├── routes/           # Endpoint routers
-│   │   └── schemas/          # Pydantic v2 models
-│   ├── config/           # Settings & logging
-│   ├── db/               # SQLAlchemy models & repositories
-│   ├── memory/           # Short-term (Redis) + Long-term (PG+Qdrant)
-│   ├── rag/              # RAG pipeline (embed, chunk, ingest, retrieve)
-│   └── tools/            # 10 LangChain-compatible tools
-├── tests/                # Unit, integration, and E2E tests
-├── alembic/              # Database migrations
-├── docker/               # Sandbox Dockerfile
-├── docker-compose.yml    # Full infrastructure stack
-├── Dockerfile            # API server image
-└── pyproject.toml        # Dependencies & project config
-```
+### Part 4: Meta-Learning & Autonomy
+[Read the Meta-Learning & Autonomous Docs](./docs/04_meta_learning_and_autonomous.md)
+* **Section 9**: Meta-Learning Documentation (Strategy Optimization, Learning Engine)
+* **Section 10**: Autonomous Research System (Goal Generation, Knowledge Gaps)
+* **Section 11**: LangGraph State Machine (Complete Workflows)
 
-## Quick Start
+### Part 5: APIs & Workflows
+[Read the API & Workflows Docs](./docs/05_api_and_workflows.md)
+* **Section 12**: API Documentation (Endpoints, Auth, Schemas)
+* **Section 13**: Workflow Documentation (E2E sequence diagrams)
 
-### Prerequisites
+### Part 6: Deployment & Operations
+[Read the Deployment & Operations Docs](./docs/06_deployment_and_operations.md)
+* **Section 14**: Deployment Guide (Docker, Cloud, Scaling)
+* **Section 15**: Observability (Metrics, Tracing, Logging)
+* **Section 16**: Security Documentation (Sandboxing, Threat Models)
 
-- Python 3.12+
-- Docker & Docker Compose
-- API keys: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`
+### Part 7: Development & Performance
+[Read the Development & Testing Docs](./docs/07_development_and_testing.md)
+* **Section 17**: Developer Guide (Onboarding, Local Setup)
+* **Section 18**: Testing Documentation (Unit, Integration, E2E)
+* **Section 19**: Performance Documentation (Latency, Token Limits)
 
-### 1. Clone & Configure
+### Part 8: Roadmap & Appendices
+[Read the Roadmap & Appendices Docs](./docs/08_roadmap_and_appendices.md)
+* **Section 20**: Future Roadmap (Phases 1-10)
+* **Section 21**: Appendices (Glossary, ADRs)
+
+---
+
+## 🚀 Quick Start
+
+To run the platform locally for development:
 
 ```bash
+# 1. Clone the repository
 git clone git@github.com:genius-0963/ModelX.git
 cd ModelX
+
+# 2. Setup Environment Variables
 cp .env.example .env
-# Edit .env with your API keys
-```
+# Fill in ANTHROPIC_API_KEY and OPENAI_API_KEY in .env
 
-### 2. Start Infrastructure
+# 3. Start Core Infrastructure (DBs)
+docker-compose up -d postgres qdrant redis neo4j
 
-```bash
-docker compose up -d postgres qdrant redis
-```
+# 4. Install Dependencies
+python -m venv venv
+source venv/bin/activate
+pip install -e .[dev]
 
-### 3. Install Dependencies
-
-```bash
-pip install -e ".[dev]"
-```
-
-### 4. Run Migrations
-
-```bash
+# 5. Run Database Migrations
 alembic upgrade head
+
+# 6. Start the API
+uvicorn src.api.main:app --reload
 ```
 
-### 5. Start the API Server
+---
 
-```bash
-uvicorn src.api.main:app --reload --port 8000
-```
+## 🧠 What makes ModelX different?
 
-### 6. Test It
+Most AI platforms today are **Stateless** and **Reactive**. They wait for a prompt, execute it, and forget it ever happened.
 
-```bash
-# Health check
-curl http://localhost:8000/health
+**ModelX is Stateful and Proactive:**
+- **It Learns:** The `LearningEngine` tracks failures and updates execution strategies to avoid making the same mistake twice.
+- **It Remembers:** Combines Vector Search (Qdrant), Relational Data (PostgreSQL), and Graph Topologies (Neo4j) to build a human-like memory hierarchy.
+- **It Explores:** The `AutonomousResearchLoop` endlessly scans its own Knowledge Graph for contradictions or gaps, autonomously generates goals, and spends idle compute time exploring those topics.
 
-# Create a goal
-curl -X POST http://localhost:8000/api/v1/goals \
-  -H "Content-Type: application/json" \
-  -d '{"goal": "Research the latest advances in transformer architectures and summarize findings"}'
-
-# Execute the goal
-curl -X POST http://localhost:8000/api/v1/goals/{goal_id}/execute \
-  -H "Content-Type: application/json" \
-  -d '{}'
-```
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/health` | Liveness probe |
-| `GET` | `/health/ready` | Readiness probe |
-| `POST` | `/api/v1/goals` | Create a new goal |
-| `GET` | `/api/v1/goals/{id}` | Get goal details |
-| `POST` | `/api/v1/goals/{id}/execute` | Execute a goal |
-| `GET` | `/api/v1/tasks/{id}` | Get task details |
-| `GET` | `/api/v1/tasks/by-goal/{id}` | List tasks for a goal |
-| `POST` | `/api/v1/memory/store` | Store a memory |
-| `POST` | `/api/v1/memory/recall` | Recall memories |
-| `GET` | `/api/v1/memory/{id}` | Get a memory |
-| `POST` | `/api/v1/knowledge/ingest` | Ingest knowledge |
-| `POST` | `/api/v1/knowledge/search` | Search knowledge |
-| `GET` | `/api/v1/reflections/{session_id}` | Get reflections |
-
-## Agent Workflow
-
-```
-Goal Input → Analyze Goal → Recall Memories → Decompose into Tasks
-     ↓
-Route Task → Research Agent / Execution Agent / Memory Agent
-     ↓
-Integrate Results → All Done? → Reflection Agent → Generate Report → ✅ Complete
-                       ↑ No         ↓
-                       └── Route Next Task
-```
-
-## Running Tests
-
-```bash
-# Unit tests
-pytest tests/unit/ -v
-
-# Integration tests (requires mocked services)
-pytest tests/integration/ -v -m integration
-
-# All tests
-pytest -v
-```
-
-## Environment Variables
-
-See [`.env.example`](.env.example) for the full list. Key variables:
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | ✅ | Claude API access |
-| `OPENAI_API_KEY` | ✅ | Embedding generation |
-| `POSTGRES_PASSWORD` | ✅ | Database password |
-| `TAVILY_API_KEY` | ❌ | Web search (optional) |
-
-## License
-
-MIT
+Please refer to the detailed [docs/](./docs/) directory for an exhaustive breakdown of the platform's capabilities.
