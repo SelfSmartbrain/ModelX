@@ -177,6 +177,17 @@ class AgentStateDict(TypedDict, total=False):
     research_tracks: list[dict[str, Any]]
     portfolio_summary: dict[str, Any] | None
 
+    # Self-Improving Intelligence (Phase 7)
+    cognition_reflections: list[dict[str, Any]]
+    failure_patterns: list[dict[str, Any]]
+    research_strategies: list[dict[str, Any]]
+    cognitive_skills: list[dict[str, Any]]
+    cognitive_metrics: list[dict[str, Any]]
+    autonomy_score: float
+    learning_velocity: float
+    best_strategy: dict[str, Any] | None
+    optimization_recommendations: list[str]
+
     # Output
     final_report: str | None
 
@@ -226,5 +237,14 @@ def create_initial_state(
         generated_goals=[],
         research_tracks=[],
         portfolio_summary=None,
+        cognition_reflections=[],
+        failure_patterns=[],
+        research_strategies=[],
+        cognitive_skills=[],
+        cognitive_metrics=[],
+        autonomy_score=0.0,
+        learning_velocity=0.0,
+        best_strategy=None,
+        optimization_recommendations=[],
         final_report=None,
     )

@@ -196,6 +196,15 @@ class OrchestratorAgent:
         graph.add_node("research_portfolio", self._research_portfolio)
         graph.add_node("knowledge_graph_update", self._knowledge_graph_update)
         
+        # Phase 7 Self-Improving Intelligence Nodes
+        graph.add_node("cognition_reflection", self._cognition_reflection)
+        graph.add_node("failure_analysis", self._failure_analysis)
+        graph.add_node("meta_learning", self._meta_learning)
+        graph.add_node("strategy_optimization", self._strategy_optimization)
+        graph.add_node("skill_discovery", self._skill_discovery)
+        graph.add_node("record_metrics", self._record_metrics)
+        graph.add_node("self_improvement", self._self_improvement)
+        
         graph.add_node("generate_report", self._generate_report)
 
         # Define edges
@@ -239,7 +248,17 @@ class OrchestratorAgent:
         graph.add_edge("dynamic_replan", "classify_task")
         graph.add_edge("reflect", "extract_learnings")
         graph.add_edge("extract_learnings", "update_strategies")
-        graph.add_edge("update_strategies", "generate_report")
+        
+        # Phase 7: Post-execution cognition pipeline
+        graph.add_edge("update_strategies", "cognition_reflection")
+        graph.add_edge("cognition_reflection", "failure_analysis")
+        graph.add_edge("failure_analysis", "meta_learning")
+        graph.add_edge("meta_learning", "strategy_optimization")
+        graph.add_edge("strategy_optimization", "skill_discovery")
+        graph.add_edge("skill_discovery", "record_metrics")
+        graph.add_edge("record_metrics", "self_improvement")
+        graph.add_edge("self_improvement", "generate_report")
+        
         graph.add_edge("generate_report", END)
 
         return graph
@@ -848,6 +867,177 @@ class OrchestratorAgent:
         """Update the Neo4j knowledge graph with new concepts."""
         logger.info("Updating Knowledge Graph")
         return {}
+
+    # -----------------------------------------------------------------------
+    # Phase 7: Self-Improving Intelligence Nodes
+    # -----------------------------------------------------------------------
+
+    async def _cognition_reflection(self, state: AgentStateDict) -> dict[str, Any]:
+        """Reflect on the completed research execution to extract structured insights."""
+        logger.info("Running cognition reflection")
+        
+        reflection_data = state.get("reflection", {})
+        task_results = state.get("task_results", {})
+        
+        # Compute scores from task results
+        total = len(task_results)
+        successes = sum(1 for r in task_results.values() if r.get("status") == "completed")
+        success_score = successes / max(total, 1)
+        
+        cognition_reflection = {
+            "success_score": success_score,
+            "quality_score": success_score * 0.9,  # Weighted quality
+            "confidence_score": min(success_score + 0.1, 1.0),
+            "completion_percentage": (successes / max(total, 1)) * 100,
+            "lessons_learned": reflection_data.get("improvements", []),
+            "mistakes_found": reflection_data.get("failures", []),
+            "improvement_suggestions": reflection_data.get("root_causes", []),
+            "reflection_summary": f"Completed {successes}/{total} tasks with {success_score:.0%} success rate.",
+        }
+        
+        reflections = list(state.get("cognition_reflections", []))
+        reflections.append(cognition_reflection)
+        
+        return {"cognition_reflections": reflections}
+
+    async def _failure_analysis(self, state: AgentStateDict) -> dict[str, Any]:
+        """Detect and cluster recurring failure patterns."""
+        logger.info("Analyzing failures")
+        
+        errors = state.get("errors", [])
+        patterns: list[dict[str, Any]] = []
+        
+        if errors:
+            # Group errors by type
+            error_groups: dict[str, list[dict[str, Any]]] = {}
+            for err in errors:
+                err_type = err.get("error_type", "unknown")
+                error_groups.setdefault(err_type, []).append(err)
+            
+            for err_type, group in error_groups.items():
+                patterns.append({
+                    "pattern_name": err_type,
+                    "description": group[0].get("message", ""),
+                    "frequency": len(group),
+                    "severity": "high" if len(group) > 2 else "medium",
+                    "recommended_fix": f"Address recurring {err_type} failures",
+                })
+        
+        return {"failure_patterns": patterns}
+
+    async def _meta_learning(self, state: AgentStateDict) -> dict[str, Any]:
+        """Learn from historical reflections, strategies, and failures."""
+        logger.info("Running meta-learning")
+        
+        reflections = state.get("cognition_reflections", [])
+        failures = state.get("failure_patterns", [])
+        
+        # Extract key learnings
+        all_lessons = []
+        for ref in reflections:
+            lessons = ref.get("lessons_learned", [])
+            if isinstance(lessons, list):
+                all_lessons.extend(lessons)
+        
+        # Generate recommendations based on failure frequency
+        recommendations = []
+        for pattern in failures:
+            if pattern.get("frequency", 0) > 1:
+                recommendations.append(
+                    f"Recurring failure '{pattern.get('pattern_name')}' detected "
+                    f"{pattern.get('frequency')} times. Fix: {pattern.get('recommended_fix')}"
+                )
+        
+        return {"optimization_recommendations": recommendations}
+
+    async def _strategy_optimization(self, state: AgentStateDict) -> dict[str, Any]:
+        """Optimize research strategies based on meta-learning."""
+        logger.info("Optimizing strategies")
+        
+        selected = state.get("selected_strategy")
+        reflections = state.get("cognition_reflections", [])
+        
+        best_strategy = selected
+        if reflections:
+            avg_success = sum(r.get("success_score", 0) for r in reflections) / len(reflections)
+            if selected:
+                selected["computed_success_rate"] = avg_success
+                best_strategy = selected
+        
+        return {"best_strategy": best_strategy}
+
+    async def _skill_discovery(self, state: AgentStateDict) -> dict[str, Any]:
+        """Discover reusable skills from repeated successful task workflows."""
+        logger.info("Discovering skills")
+        
+        task_results = state.get("task_results", {})
+        skills: list[dict[str, Any]] = []
+        
+        # Identify successful task patterns that could be reusable
+        successful_tasks = [
+            (tid, r) for tid, r in task_results.items()
+            if r.get("status") == "completed"
+        ]
+        
+        if len(successful_tasks) >= 2:
+            skills.append({
+                "name": f"workflow_{state.get('goal', 'unknown')[:30]}",
+                "description": f"Reusable workflow extracted from {len(successful_tasks)} successful tasks",
+                "skill_type": "workflow",
+                "usage_count": 1,
+                "success_rate": 1.0,
+            })
+        
+        return {"cognitive_skills": skills}
+
+    async def _record_metrics(self, state: AgentStateDict) -> dict[str, Any]:
+        """Record cognitive intelligence metrics."""
+        logger.info("Recording cognitive metrics")
+        
+        reflections = state.get("cognition_reflections", [])
+        task_results = state.get("task_results", {})
+        skills = state.get("cognitive_skills", [])
+        
+        total_tasks = len(task_results)
+        successful = sum(1 for r in task_results.values() if r.get("status") == "completed")
+        
+        autonomy_score = min(successful / max(total_tasks, 1), 1.0)
+        velocity = len(reflections) * 0.1  # Learning velocity proxy
+        
+        metrics = [
+            {"metric_name": "autonomy_score", "metric_value": autonomy_score},
+            {"metric_name": "learning_velocity", "metric_value": velocity},
+            {"metric_name": "goal_completion_rate", "metric_value": successful / max(total_tasks, 1)},
+            {"metric_name": "skill_utilization", "metric_value": len(skills) * 0.1},
+        ]
+        
+        return {
+            "cognitive_metrics": metrics,
+            "autonomy_score": autonomy_score,
+            "learning_velocity": velocity,
+        }
+
+    async def _self_improvement(self, state: AgentStateDict) -> dict[str, Any]:
+        """Evaluate system performance and generate improvement recommendations."""
+        logger.info("Running self-improvement evaluation")
+        
+        recommendations = list(state.get("optimization_recommendations", []))
+        autonomy = state.get("autonomy_score", 0.0)
+        
+        if autonomy < 0.5:
+            recommendations.append(
+                "Low autonomy score detected. Consider improving task decomposition "
+                "and strategy selection for higher success rates."
+            )
+        
+        failures = state.get("failure_patterns", [])
+        if len(failures) > 3:
+            recommendations.append(
+                f"High failure pattern count ({len(failures)}). "
+                "Recommend reviewing agent error handling and retry logic."
+            )
+        
+        return {"optimization_recommendations": recommendations}
 
     async def _generate_report(self, state: AgentStateDict) -> dict[str, Any]:
         """Generate a summary report of the goal execution."""

@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from src.api.middleware import setup_middleware
-from src.api.routes import health, goals, tasks, memory, knowledge, reflections, meta, autonomous
+from src.api.routes import health, goals, tasks, memory, knowledge, reflections, meta, autonomous, cognition, dashboard
 from src.config.logging import get_logger
 from src.config.settings import get_settings
 
@@ -64,6 +64,8 @@ def create_app() -> FastAPI:
     app.include_router(reflections.router, prefix="/api/v1/reflections", tags=["Reflections"])
     app.include_router(meta.router, prefix="/api/v1/meta", tags=["Meta-Learning"])
     app.include_router(autonomous.router)
+    app.include_router(cognition.router)
+    app.include_router(dashboard.router)
     
     @app.exception_handler(Exception)
     async def global_exception_handler(request, exc):

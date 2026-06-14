@@ -143,3 +143,31 @@ class GoalStatus(str, enum.Enum):
     IN_PROGRESS = "in_progress"
     ACHIEVED = "achieved"
     FAILED = "failed"
+
+
+# ---------------------------------------------------------------------------
+# Phase 7: Self-Improving Research Intelligence
+# ---------------------------------------------------------------------------
+
+
+class FailureSeverity(str, enum.Enum):
+    """Severity level of a detected failure pattern."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class CognitiveMetricType(str, enum.Enum):
+    """Types of cognitive metrics tracked for intelligence growth."""
+
+    KNOWLEDGE_GROWTH_RATE = "knowledge_growth_rate"
+    LEARNING_VELOCITY = "learning_velocity"
+    AUTONOMY_SCORE = "autonomy_score"
+    RESEARCH_EFFICIENCY = "research_efficiency"
+    GOAL_COMPLETION_RATE = "goal_completion_rate"
+    CURIOSITY_EFFICIENCY = "curiosity_efficiency"
+    STRATEGY_EFFECTIVENESS = "strategy_effectiveness"
+    SKILL_UTILIZATION = "skill_utilization"
+
