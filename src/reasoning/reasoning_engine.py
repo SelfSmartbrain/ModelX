@@ -12,7 +12,7 @@ from .counterfactual_engine import CounterfactualEngine
 class ReasoningEngine:
     def __init__(self, search_engine: SearchEngine, counterfactual_engine: CounterfactualEngine):
         self.search = search_engine
-        self.counterfactual = counterfactual_engine
+        self._counterfactual = counterfactual_engine
 
     def plan(self, goal: str, context: List[Any]) -> List[str]:
         """Generate a sequential plan to achieve `goal`.
@@ -31,7 +31,7 @@ class ReasoningEngine:
 
     def counterfactual(self, scenario: str) -> str:
         """Run a counterfactual simulation for a given scenario using the CounterfactualEngine."""
-        return self.counterfactual.run(scenario)
+        return self._counterfactual.run(scenario)
 
     def __repr__(self) -> str:
         return "ReasoningEngine()"

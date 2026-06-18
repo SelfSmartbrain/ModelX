@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from .client import Neo4jClient
 
 logger = logging.getLogger(__name__)
 
+def _sanitize_identifier(identifier: str) -> str:
+    """Ensure identifier only contains alphanumeric characters and underscores."""
+    if not re.match(r"^[A-Za-z0-9_]+$", identifier):
+        raise ValueError(f"Invalid Cypher identifier: {identifier}")
+    return identifier
 
 class KnowledgeGraphManager:
     """Provides high-level operations for storing and querying the Knowledge Graph."""
@@ -33,8 +39,9 @@ class KnowledgeGraphManager:
         # Cypher doesn't allow dynamic labels in MERGE easily via parameters,
         # so we merge on a generic Entity label and set the specific label.
         # But for this implementation, we can just use the properties.
+        safe_label = _sanitize_identifier(label)
         query = f"""
-        MERGE (e:{label} {{id: $entity_id}})
+        MERGE (e:{safe_label} {{id: $entity_id}})
         SET e += $props
         RETURN e
         """
@@ -51,10 +58,13 @@ class KnowledgeGraphManager:
     ) -> None:
         """Create a directed relationship between two nodes."""
         props = properties or {}
+        safe_source = _sanitize_identifier(source_label)
+        safe_target = _sanitize_identifier(target_label)
+        safe_rel = _sanitize_identifier(rel_type)
         query = f"""
-        MATCH (a:{source_label} {{id: $source_id}})
-        MATCH (b:{target_label} {{id: $target_id}})
-        MERGE (a)-[r:{rel_type}]->(b)
+        MATCH (a:{safe_source} {{id: $source_id}})
+        MATCH (b:{safe_target} {{id: $target_id}})
+        MERGE (a)-[r:{safe_rel}]->(b)
         SET r += $props
         RETURN r
         """
@@ -73,10 +83,11 @@ class KnowledgeGraphManager:
     ) -> None:
         """Create a directed relationship between two Concepts."""
         props = properties or {}
+        safe_rel = _sanitize_identifier(rel_type)
         query = f"""
         MATCH (a:Concept {{name: $source_name}})
         MATCH (b:Concept {{name: $target_name}})
-        MERGE (a)-[r:{rel_type}]->(b)
+        MERGE (a)-[r:{safe_rel}]->(b)
         SET r += $props
         RETURN r
         """

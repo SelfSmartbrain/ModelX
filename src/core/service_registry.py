@@ -40,7 +40,7 @@ class ServiceRegistry:
     """
     
     _instance: Optional["ServiceRegistry"] = None
-    _lock = asyncio.Lock()
+    _lock: Optional[asyncio.Lock] = None
     
     def __init__(self):
         self._services: Dict[str, Any] = {}
@@ -49,6 +49,8 @@ class ServiceRegistry:
     @classmethod
     async def get_instance(cls) -> "ServiceRegistry":
         """Get the singleton instance of the service registry."""
+        if cls._lock is None:
+            cls._lock = asyncio.Lock()
         if cls._instance is None:
             async with cls._lock:
                 if cls._instance is None:
@@ -59,6 +61,9 @@ class ServiceRegistry:
         """Initialize and cache all core cognitive services."""
         if self._initialized:
             return
+            
+        if self._lock is None:
+            self._lock = asyncio.Lock()
             
         async with self._lock:
             if self._initialized:

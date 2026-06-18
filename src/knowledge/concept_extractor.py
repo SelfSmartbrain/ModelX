@@ -15,16 +15,19 @@ class ConceptExtractor:
         self.semantic_mem = semantic_mem
         self.vectorizer = TfidfVectorizer(max_features=20, stop_words='english')
 
-    def _fetch_outcomes(self) -> List[str]:
-        episodes = self.db.query(EpisodicMemory).filter(EpisodicMemory.outcome != None).all()
+    async def _fetch_outcomes(self) -> List[str]:
+        from sqlalchemy import select
+        stmt = select(EpisodicMemory).where(EpisodicMemory.outcome != None)
+        result = await self.db.execute(stmt)
+        episodes = result.scalars().all()
         return [ep.outcome for ep in episodes]
 
-    def extract(self) -> List[Dict[str, str]]:
+    async def extract(self) -> List[Dict[str, str]]:
         """Return a list of candidate concepts as ``{'term': str, 'score': float}``.
         
         This stub extracts the top TF‑IDF terms from recent outcomes.
         """
-        texts = self._fetch_outcomes()
+        texts = await self._fetch_outcomes()
         if not texts:
             return []
         tfidf_matrix = self.vectorizer.fit_transform(texts)

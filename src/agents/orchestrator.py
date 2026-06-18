@@ -42,6 +42,14 @@ from src.agents.capability_nodes import (
     tool_validation_node,
     tool_registration_node,
     tool_evolution_node,
+    capability_evaluation_node,
+    benchmark_execution_node,
+    transfer_analysis_node,
+    discovery_analysis_node,
+    peer_review_node,
+    regression_detection_node,
+    program_evaluation_node,
+    capability_reporting_node,
 )
 
 from src.agents.world_model_nodes import (
@@ -60,7 +68,7 @@ from src.agents.architecture_nodes import (
     dependency_analysis_node,
     component_analysis_node,
     bottleneck_detection_node,
-    hypothesis_generation_node,
+    hypothesis_generation_node as arch_hypothesis_generation_node,
     candidate_generation_node,
     sandbox_benchmarking_node,
     benchmark_reporting_node,
@@ -77,16 +85,6 @@ from src.agents.evolution_nodes import (
     generation_tracking_node,
 )
 
-from src.agents.capability_nodes import (
-    capability_evaluation_node,
-    benchmark_execution_node,
-    transfer_analysis_node,
-    discovery_analysis_node,
-    peer_review_node,
-    regression_detection_node,
-    program_evaluation_node,
-    capability_reporting_node,
-)
 
 from src.agents.project_nodes import (
     environment_analysis_node,
@@ -304,7 +302,7 @@ class OrchestratorAgent:
         graph.add_node("dependency_analysis", dependency_analysis_node)
         graph.add_node("component_analysis", component_analysis_node)
         graph.add_node("bottleneck_detection", bottleneck_detection_node)
-        graph.add_node("hypothesis_generation", hypothesis_generation_node)
+        graph.add_node("arch_hypothesis_generation", arch_hypothesis_generation_node)
         graph.add_node("candidate_generation", candidate_generation_node)
         graph.add_node("sandbox_benchmarking", sandbox_benchmarking_node)
         graph.add_node("benchmark_reporting", benchmark_reporting_node)
@@ -417,8 +415,8 @@ class OrchestratorAgent:
         graph.add_edge("architecture_analysis", "dependency_analysis")
         graph.add_edge("dependency_analysis", "component_analysis")
         graph.add_edge("component_analysis", "bottleneck_detection")
-        graph.add_edge("bottleneck_detection", "hypothesis_generation")
-        graph.add_edge("hypothesis_generation", "candidate_generation")
+        graph.add_edge("bottleneck_detection", "arch_hypothesis_generation")
+        graph.add_edge("arch_hypothesis_generation", "candidate_generation")
         graph.add_edge("candidate_generation", "sandbox_benchmarking")
         graph.add_edge("sandbox_benchmarking", "benchmark_reporting")
         
