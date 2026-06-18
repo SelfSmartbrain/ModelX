@@ -56,6 +56,8 @@ def create_app() -> FastAPI:
     setup_middleware(app, settings)
     
     # Include routers
+    from src.api.routes import auth_routes
+    app.include_router(auth_routes.router, prefix="/api/v1/auth", tags=["Auth"])
     app.include_router(health.router)
     app.include_router(goals.router, prefix="/api/v1/goals", tags=["Goals"])
     app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["Tasks"])

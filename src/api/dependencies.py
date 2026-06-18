@@ -82,6 +82,12 @@ async def get_learning_repo(db_session=Depends(get_session)) -> LearningReposito
     """Get the LearningRepository bound to the current DB session."""
     return LearningRepository(db_session)
 
+from src.db.repositories.user_repo import UserRepository
+
+async def get_user_repo(db_session=Depends(get_session)) -> UserRepository:
+    """Get the UserRepository bound to the current DB session."""
+    return UserRepository(db_session)
+
 # Export standard dependency types for routes
 CurrentUser = Annotated[User, Depends(get_current_user)]
 DB_SessionRepo = Annotated[SessionRepository, Depends(get_session_repo)]

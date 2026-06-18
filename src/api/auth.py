@@ -1,55 +1,75 @@
-"""
-Authentication and Authorization.
-
-Provides JWT token verification and API key fallback for secure endpoint access.
-"""
-
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Header, status
 from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 from pydantic import BaseModel
 
 from src.config.settings import get_settings
+from src.db.repositories.user_repo import UserRepository
+from src.db.session import get_session
 
-# In a real system, this would be validated against a database
-# For this scaffold, we provide a mock user model
 class User(BaseModel):
     id: uuid.UUID
     email: str
     is_active: bool = True
 
-# OAuth2 scheme for swagger UI integration
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
+    settings = get_settings()
+    # Use a hardcoded fallback if JWT_SECRET isn't in settings
+    secret_key = getattr(settings, "JWT_SECRET", "super-secret-key-for-dev")
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, secret_key, algorithm="HS256")
+    return encoded_jwt
 
 async def get_current_user(
     token: Annotated[str | None, Depends(oauth2_scheme)],
+    db_session=Depends(get_session),
     api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
 ) -> User:
-    """
-    Validate credentials and return the current user.
-    Supports both JWT Bearer tokens and custom X-API-Key header.
-    """
     settings = get_settings()
-    
-    # This is a mock implementation. 
-    # In production, you would verify the JWT signature or lookup the API key in the DB.
-    
+    secret_key = getattr(settings, "JWT_SECRET", "super-secret-key-for-dev")
+    repo = UserRepository(db_session)
+
     if not token and not api_key:
-        # In development, return a mock user if auth is not strictly required
         if settings.environment == "development":
             return User(id=uuid.UUID("00000000-0000-0000-0000-000000000000"), email="dev@example.com")
-            
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated. Provide Bearer token or X-API-Key header.",
+            detail="Not authenticated.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    if token:
+        try:
+            payload = jwt.decode(token, secret_key, algorithms=["HS256"])
+            email: str = payload.get("sub")
+            if email is None:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        except JWTError:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
         
-    # For now, just return a mock user if any token is provided
-    # A complete implementation would decode the JWT and fetch user details
-    return User(
-        id=uuid.UUID("11111111-1111-1111-1111-111111111111"), 
-        email="user@example.com"
-    )
+        user_db = await repo.get_by_email(email)
+        if user_db is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        return User(id=user_db.id, email=user_db.email)
+    
+    # API Key logic would go here if needed
+    return User(id=uuid.UUID("11111111-1111-1111-1111-111111111111"), email="api@example.com")
