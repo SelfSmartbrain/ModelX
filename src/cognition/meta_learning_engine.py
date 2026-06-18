@@ -24,7 +24,7 @@ class MetaLearningEngine:
     def __init__(self) -> None:
         self.settings = get_settings()
         self.llm = ChatAnthropic(
-            model=self.settings.ANTHROPIC_MODEL,
+            model=self.settings.anthropic_model,
             api_key=self.settings.ANTHROPIC_API_KEY,
             max_tokens=4096,
         )
