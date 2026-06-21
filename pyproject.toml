@@ -60,6 +60,14 @@ dependencies = [
     "tiktoken>=0.8.0",
     "pypdf>=5.0.0",
 
+    # Vision & Multi-Modal (Phase 7)
+    "pillow>=10.0.0",
+    "playwright>=1.40.0",
+    "opencv-python>=4.8.0",
+    "transformers>=4.36.0",
+    "torch>=2.1.0",
+    "torchvision>=0.16.0",
+
     # Auth
     "passlib[bcrypt]>=1.7.4",
     "python-jose[cryptography]>=3.3.0",
