@@ -1997,4 +1997,233 @@ class ExternalOutcome(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     impact_score: Mapped[float] = mapped_column(Float, nullable=False)
     verification_status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending") # pending, verified, rejected
+
+
+# ---------------------------------------------------------------------------
+# Phase 7: Multi-Modal Context Models
+# ---------------------------------------------------------------------------
+
+
+class Screenshot(Base):
+    """Captured screenshot for visual analysis (Phase 7)."""
+    __tablename__ = "screenshots"
+    __table_args__ = (
+        Index("ix_screenshots_session", "session_id"),
+        Index("ix_screenshots_task", "task_id"),
+        Index("ix_screenshots_created_at", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    session_id: Mapped[UUID | None] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True, index=True)
+    task_id: Mapped[UUID | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True)
+    url: Mapped[str] = mapped_column(String(2048), nullable=True)
+    image_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    file_path: Mapped[str] = mapped_column(String(512), nullable=True)
+    viewport_width: Mapped[int] = mapped_column(Integer, nullable=False, default=1920)
+    viewport_height: Mapped[int] = mapped_column(Integer, nullable=False, default=1080)
+    analysis_status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending") # pending, processing, complete, failed
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    session: Mapped[Session | None] = relationship(foreign_keys=[session_id])
+    task: Mapped[Task | None] = relationship(foreign_keys=[task_id])
+    visual_elements: Mapped[list[VisualElement]] = relationship(back_populates="screenshot", cascade="all, delete-orphan")
+    interaction_logs: Mapped[list[InteractionLog]] = relationship(back_populates="screenshot", cascade="all, delete-orphan")
+
+    def __repr__(self) -> str:
+        return f"<Screenshot id={self.id!s} url={self.url!r} status={self.analysis_status!r}>"
+
+
+class VisualElement(Base):
+    """Detected visual element in a screenshot (Phase 7)."""
+    __tablename__ = "visual_elements"
+    __table_args__ = (
+        Index("ix_visual_elements_screenshot", "screenshot_id"),
+        Index("ix_visual_elements_type", "element_type"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    screenshot_id: Mapped[UUID] = mapped_column(ForeignKey("screenshots.id", ondelete="CASCADE"), nullable=False, index=True)
+    element_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True) # button, input, link, text, etc.
+    bbox_x1: Mapped[int] = mapped_column(Integer, nullable=False)
+    bbox_y1: Mapped[int] = mapped_column(Integer, nullable=False)
+    bbox_x2: Mapped[int] = mapped_column(Integer, nullable=False)
+    bbox_y2: Mapped[int] = mapped_column(Integer, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    text_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    attributes: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    screenshot: Mapped[Screenshot] = relationship(back_populates="visual_elements")
+
+    def __repr__(self) -> str:
+        return f"<VisualElement id={self.id!s} type={self.element_type!r} confidence={self.confidence}>"
+
+
+class InteractionLog(Base):
+    """Log of visual interaction actions (Phase 7)."""
+    __tablename__ = "interaction_logs"
+    __table_args__ = (
+        Index("ix_interaction_logs_screenshot", "screenshot_id"),
+        Index("ix_interaction_logs_session", "session_id"),
+        Index("ix_interaction_logs_created_at", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    screenshot_id: Mapped[UUID | None] = mapped_column(ForeignKey("screenshots.id", ondelete="SET NULL"), nullable=True, index=True)
+    session_id: Mapped[UUID | None] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True, index=True)
+    task_id: Mapped[UUID | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True)
+    action_type: Mapped[str] = mapped_column(String(100), nullable=False) # click, type, scroll, navigate
+    element_id: Mapped[UUID | None] = mapped_column(ForeignKey("visual_elements.id", ondelete="SET NULL"), nullable=True)
+    coordinates_x: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    coordinates_y: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    text_input: Mapped[str | None] = mapped_column(Text, nullable=True)
+    success: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    screenshot: Mapped[Screenshot | None] = relationship(back_populates="interaction_logs")
+    element: Mapped[VisualElement | None] = relationship(foreign_keys=[element_id])
+
+    def __repr__(self) -> str:
+        return f"<InteractionLog id={self.id!s} action={self.action_type!r} success={self.success}>"
+
+
+# ---------------------------------------------------------------------------
+# Phase 8: Swarm Orchestration Models
+# ---------------------------------------------------------------------------
+
+
+class DirectorAgent(Base):
+    """Director agent that manages sub-orchestrators (Phase 8)."""
+    __tablename__ = "director_agents"
+    __table_args__ = (
+        Index("ix_director_agents_status", "status"),
+        Index("ix_director_agents_created_at", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="idle") # idle, active, scaling, shutdown
+    max_sub_orchestrators: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    current_sub_orchestrators: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    active_goals_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_goals_completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    last_activity_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    swarm_goals: Mapped[list[SwarmGoal]] = relationship(back_populates="director", cascade="all, delete-orphan")
+    sub_orchestrators: Mapped[list[SubOrchestrator]] = relationship(back_populates="director", cascade="all, delete-orphan")
+
+    def __repr__(self) -> str:
+        return f"<DirectorAgent id={self.id!s} status={self.status!r} sub_orchs={self.current_sub_orchestrators}>"
+
+
+class SwarmGoal(Base):
+    """High-level goal for the swarm to execute (Phase 8)."""
+    __tablename__ = "swarm_goals"
+    __table_args__ = (
+        Index("ix_swarm_goals_director", "director_id"),
+        Index("ix_swarm_goals_status", "status"),
+        Index("ix_swarm_goals_priority", "priority"),
+        Index("ix_swarm_goals_created_at", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    director_id: Mapped[UUID] = mapped_column(ForeignKey("director_agents.id", ondelete="CASCADE"), nullable=False, index=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    estimated_complexity: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    required_capabilities: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
+    resource_requirements: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending") # pending, planning, executing, completed, failed
+    sub_task_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    completed_sub_tasks: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    director: Mapped[DirectorAgent] = relationship(back_populates="swarm_goals")
+    sub_tasks: Mapped[list[SwarmSubTask]] = relationship(back_populates="goal", cascade="all, delete-orphan")
+
+    def __repr__(self) -> str:
+        return f"<SwarmGoal id={self.id!s} status={self.status!r} priority={self.priority}>"
+
+
+class SubOrchestrator(Base):
+    """Sub-orchestrator that executes sub-tasks (Phase 8)."""
+    __tablename__ = "sub_orchestrators"
+    __table_args__ = (
+        Index("ix_sub_orchestrators_director", "director_id"),
+        Index("ix_sub_orchestrators_status", "status"),
+        Index("ix_sub_orchestrators_created_at", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    director_id: Mapped[UUID] = mapped_column(ForeignKey("director_agents.id", ondelete="CASCADE"), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="idle") # idle, assigned, executing, completed, failed
+    current_task_id: Mapped[UUID | None] = mapped_column(ForeignKey("swarm_sub_tasks.id", ondelete="SET NULL"), nullable=True)
+    capabilities: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
+    current_load: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    max_capacity: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    total_tasks_completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    avg_task_duration: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    success_rate: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    last_activity_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    director: Mapped[DirectorAgent] = relationship(back_populates="sub_orchestrators")
+    current_task: Mapped[SwarmSubTask | None] = relationship(foreign_keys=[current_task_id])
+    assigned_tasks: Mapped[list[SwarmSubTask]] = relationship(back_populates="assigned_orchestrator", cascade="all, delete-orphan")
+
+    def __repr__(self) -> str:
+        return f"<SubOrchestrator id={self.id!s} status={self.status!r} load={self.current_load}>"
+
+
+class SwarmSubTask(Base):
+    """Sub-task assigned to a sub-orchestrator (Phase 8)."""
+    __tablename__ = "swarm_sub_tasks"
+    __table_args__ = (
+        Index("ix_swarm_sub_tasks_goal", "goal_id"),
+        Index("ix_swarm_sub_tasks_orchestrator", "assigned_orchestrator_id"),
+        Index("ix_swarm_sub_tasks_status", "status"),
+        Index("ix_swarm_sub_tasks_created_at", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    goal_id: Mapped[UUID] = mapped_column(ForeignKey("swarm_goals.id", ondelete="CASCADE"), nullable=False, index=True)
+    assigned_orchestrator_id: Mapped[UUID | None] = mapped_column(ForeignKey("sub_orchestrators.id", ondelete="SET NULL"), nullable=True, index=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    dependencies: Mapped[list[UUID] | None] = mapped_column(ARRAY(String), nullable=True)
+    estimated_duration: Mapped[int] = mapped_column(Integer, nullable=False, default=300)
+    actual_duration: Mapped[int] = mapped_column(Integer, nullable=True)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending") # pending, assigned, executing, completed, failed
+    progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    goal: Mapped[SwarmGoal] = relationship(back_populates="sub_tasks")
+    assigned_orchestrator: Mapped[SubOrchestrator | None] = relationship(back_populates="assigned_tasks", foreign_keys=[assigned_orchestrator_id])
+
+    def __repr__(self) -> str:
+        return f"<SwarmSubTask id={self.id!s} status={self.status!r} progress={self.progress}>"
