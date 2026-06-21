@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from src.api.middleware import setup_middleware
-from src.api.routes import health, goals, tasks, memory, knowledge, reflections, meta, autonomous, cognition, dashboard
+from src.api.routes import health, goals, tasks, memory, knowledge, reflections, meta, autonomous, cognition, dashboard, vision, swarm
 from src.config.logging import get_logger
 from src.config.settings import get_settings
 
@@ -68,6 +68,8 @@ def create_app() -> FastAPI:
     app.include_router(autonomous.router)
     app.include_router(cognition.router)
     app.include_router(dashboard.router)
+    app.include_router(vision.router, prefix="/api/v1/vision", tags=["Vision"])
+    app.include_router(swarm.router, prefix="/api/v1/swarm", tags=["Swarm"])
     
     @app.exception_handler(Exception)
     async def global_exception_handler(request, exc):
