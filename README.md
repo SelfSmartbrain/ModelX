@@ -50,6 +50,7 @@ ModelX aims to bridge the gap between reactive AI assistants and proactive, cont
 
 ### What's New
 
+- **Phase 13: Cognitive Operating System** - Unified cognitive organism with centralized attention, memory abstraction, and reasoning orchestration
 - **Phase 7: Multi-Modal Context** - Vision models for UI screenshot analysis and visual web interaction
 - **Phase 8: Swarm Orchestration** - Hierarchical swarm architecture for large-scale goal execution
 - **CLI Tool** - Comprehensive command-line interface for all ModelX capabilities
@@ -60,6 +61,7 @@ ModelX aims to bridge the gap between reactive AI assistants and proactive, cont
 
 ### Core Capabilities
 
+- **Cognitive Operating System**: Unified cognitive organism with centralized attention, memory abstraction, and reasoning orchestration
 - **Multi-Agent Orchestration**: LangGraph-based coordination of specialized agents (Research, Execution, Memory, Reflection)
 - **Hierarchical Memory System**: Redis (working), PostgreSQL (episodic/procedural), Qdrant (semantic), Neo4j (structural)
 - **Meta-Learning**: System learns how to learn, caching successful strategies
@@ -67,7 +69,18 @@ ModelX aims to bridge the gap between reactive AI assistants and proactive, cont
 - **Autonomous Tool Creation**: Agents generate, test, and deploy their own Python tools
 - **Architecture Evolution**: Self-rewriting LangGraph topologies based on performance
 
-### New Features (Phase 7 & 8)
+### Cognitive OS Features (Phase 13)
+
+- **Cognitive Kernel**: Central brain for global context, attention allocation, and cognitive resource scheduling
+- **Unified Memory Graph**: Single abstraction layer over PostgreSQL, Redis, Neo4j, and Qdrant
+- **Cognitive Attention**: Biological attention system with salience detection and priority management
+- **Unified Reasoning**: System 1 & 2 thinking, counterfactual reasoning, planning, and debate modes
+- **Agent Society**: Multi-agent collaboration with reputation, delegation, and cooperation
+- **Long-Term Identity**: Self-awareness, capability tracking, and mission management
+- **Research Programs**: Long-running autonomous research with scheduling and memory
+- **Autonomous Development**: Self-analysis, code improvement, and repository optimization
+
+### Vision & Swarm Features (Phase 7 & 8)
 
 - **Vision Processing**: Analyze screenshots, detect UI elements, extract text using transformers
 - **Visual Interaction**: Autonomous web interaction via vision models
@@ -102,6 +115,16 @@ flowchart TB
         CLI[ModelX CLI]
     end
 
+    subgraph Cognitive_Layer
+        Kernel[Cognitive Kernel]
+        Attention[Attention Engine]
+        Reasoning[Reasoning Hub]
+        MemoryGraph[Memory Graph]
+        Society[Agent Society]
+        Identity[Identity System]
+        Research[Research Programs]
+    end
+
     subgraph Intelligence_Layer
         Orchestrator[LangGraph Orchestrator]
         Agents[Specialized Agents]
@@ -123,16 +146,24 @@ flowchart TB
 
     Web --> FastAPI
     CLI --> FastAPI
-    FastAPI --> Orchestrator
+    FastAPI --> Kernel
+    Kernel --> Attention
+    Kernel --> Reasoning
+    Kernel --> MemoryGraph
+    Kernel --> Society
+    Kernel --> Identity
+    Kernel --> Research
+    Kernel --> Orchestrator
     Orchestrator --> Agents
     Orchestrator --> Swarm
     Screenshots --> Vision
     Vision --> Element
     Element --> Visual
+    MemoryGraph --> PostgreSQL
+    MemoryGraph --> Neo4j
+    MemoryGraph --> Qdrant
+    MemoryGraph --> Redis
     Agents --> PostgreSQL
-    Agents --> Neo4j
-    Agents --> Qdrant
-    Agents --> Redis
     Swarm --> PostgreSQL
 ```
 
@@ -144,6 +175,63 @@ graph TB
         API[FastAPI REST API]
         CLI[Command Line Interface]
         Docker[Docker Compose]
+    end
+    
+    subgraph Cognitive_Layer
+        Kernel[Cognitive Kernel]
+        Scheduler[Cognitive Scheduler]
+        Attention[Attention Manager]
+        Bus[Cognitive Bus]
+        Context[Context Manager]
+    end
+    
+    subgraph Memory_Layer
+        Fabric[Memory Fabric]
+        Router[Memory Router]
+        Index[Memory Index]
+    end
+    
+    subgraph Attention_Layer
+        Engine[Attention Engine]
+        Salience[Salience Detector]
+        Priority[Priority Manager]
+    end
+    
+    subgraph Reasoning_Layer
+        Hub[Reasoning Hub]
+        Planner[Planner]
+        Deliberation[Deliberation Engine]
+        Counterfactual[Counterfactual Reasoner]
+    end
+    
+    subgraph Communication_Layer
+        Events[Cognitive Events]
+        Protocol[Agent Protocol]
+        Broker[Message Broker]
+    end
+    
+    subgraph Society_Layer
+        Runtime[Society Runtime]
+        Registry[Agent Registry]
+        Marketplace[Task Marketplace]
+    end
+    
+    subgraph Identity_Layer
+        IdentityEngine[Identity Engine]
+        SelfModel[Self Model]
+        Mission[Mission Manager]
+    end
+    
+    subgraph Research_Layer
+        Program[Research Program]
+        ProgramScheduler[Program Scheduler]
+        ProgramMemory[Program Memory]
+    end
+    
+    subgraph Development_Layer
+        SelfDev[Self Development]
+        CodeImprove[Code Improvement]
+        RepoOpt[Repo Optimizer]
     end
     
     subgraph Intelligence_Layer
@@ -183,8 +271,42 @@ graph TB
         Redis[(Redis)]
     end
     
-    API --> Orchestrator
+    API --> Kernel
     CLI --> API
+    Kernel --> Scheduler
+    Kernel --> Attention
+    Kernel --> Bus
+    Kernel --> Context
+    Kernel --> Fabric
+    Kernel --> Engine
+    Kernel --> Hub
+    Kernel --> Events
+    Kernel --> Runtime
+    Kernel --> IdentityEngine
+    Kernel --> Program
+    Kernel --> SelfDev
+    Kernel --> Orchestrator
+    Fabric --> Router
+    Router --> Index
+    Index --> PG
+    Index --> Neo
+    Index --> QD
+    Index --> Redis
+    Engine --> Salience
+    Engine --> Priority
+    Hub --> Planner
+    Hub --> Deliberation
+    Hub --> Counterfactual
+    Events --> Protocol
+    Events --> Broker
+    Runtime --> Registry
+    Runtime --> Marketplace
+    IdentityEngine --> SelfModel
+    IdentityEngine --> Mission
+    Program --> ProgramScheduler
+    Program --> ProgramMemory
+    SelfDev --> CodeImprove
+    SelfDev --> RepoOpt
     Orchestrator --> Research
     Orchestrator --> Execution
     Orchestrator --> Memory
@@ -209,6 +331,114 @@ graph TB
 ---
 
 ## 🚀 Phase Implementation
+
+### Phase 13: Cognitive Operating System
+
+**Overview**: Transforms ModelX from a collection of intelligent components into a unified cognitive organism with centralized attention, memory abstraction, and reasoning orchestration.
+
+**Architecture Shift**:
+- **Before**: Research Agent, Execution Agent, Reflection Agent, Memory Agent operate separately
+- **After**: Cognitive Kernel coordinates all agents through unified cognitive systems
+
+**Components**:
+
+**13A - Cognitive Kernel** (5 files)
+- `CognitiveKernel`: Central orchestrator for cognitive operations
+- `CognitiveScheduler`: Priority-based task scheduling with timeouts and retries
+- `AttentionManager`: Cognitive attention allocation and focus management
+- `CognitiveBus`: Event-driven communication system
+- `ContextManager`: Global cognitive context across all agents
+
+**13B - Unified Memory Graph** (3 files)
+- `MemoryFabric`: Unified API over PostgreSQL, Redis, Neo4j, Qdrant
+- `MemoryRouter`: Intelligent routing to optimal backends
+- `MemoryIndex`: Unified indexing across all memory systems
+
+**13C - Cognitive Attention System** (3 files)
+- `AttentionEngine`: Core attention allocation with bottom-up/top-down modes
+- `SalienceDetector`: Identifies important information (novelty, urgency, importance)
+- `PriorityManager`: Task priority management with escalation and decay
+
+**13D - Unified Reasoning Engine** (4 files)
+- `ReasoningHub`: Orchestrates different reasoning modes
+- `Planner`: Goal-oriented planning and execution
+- `DeliberationEngine`: System 2 slow, deliberate reasoning
+- `CounterfactualReasoner`: What-if scenario analysis
+
+**13E - Cognitive Communication Bus** (3 files)
+- `CognitiveEventSystem`: Event definition, emission, subscription
+- `AgentProtocol`: Standardized message formats and conversation management
+- `MessageBroker`: Central message routing and queuing
+
+**13F - Agent Society Runtime** (3 files)
+- `SocietyRuntime`: Manages agent society lifecycle and collaboration
+- `AgentRegistry`: Agent registration, discovery, capability tracking
+- `TaskMarketplace`: Task posting, bidding, and delegation
+
+**13G - Long-Term Identity System** (3 files)
+- `IdentityEngine`: Maintains persistent identity and tracks capabilities
+- `SelfModel`: Models own capabilities and limitations
+- `MissionManager`: Defines and tracks long-term missions
+
+**13H - Persistent Research Programs** (3 files)
+- `ResearchProgram`: Defines research programs with hypotheses and experiments
+- `ProgramScheduler`: Schedules and executes research programs
+- `ProgramMemory`: Stores research insights and knowledge
+
+**13I - Autonomous Development Mode** (3 files)
+- `SelfDevelopment`: Self-analysis with safety controls
+- `CodeImprovement`: Code quality analysis and suggestions
+- `RepoOptimizer`: Repository optimization and maintenance
+
+**13J - Terminal-Native Interface** (CLI updates)
+- `cognitive` commands: status, reason, attend
+- `society` commands: create, list, add-agent
+- `identity` commands: status, create-mission, missions
+- `research` commands: create-program, schedule, list
+- `develop` commands: analyze, optimize, improve
+
+**Database Models** (7 new models):
+- `CognitiveTask`: Cognitive tasks managed by kernel
+- `AttentionRecord`: Attention allocation records
+- `MemoryLink`: Links between memories in unified graph
+- `ResearchProgram`: Long-running research programs
+- `AgentIdentity`: Agent identity information
+- `MissionState`: Long-term mission states
+- `CognitiveMetric`: Cognitive performance metrics
+
+**LangGraph Nodes** (6 new nodes):
+- `attention_allocation_node`: Allocate cognitive attention
+- `memory_consolidation_node`: Consolidate short-term to long-term memory
+- `deliberation_node`: System 2 deliberative reasoning
+- `society_planning_node`: Multi-agent collaboration planning
+- `identity_update_node`: Update long-term identity
+- `program_execution_node`: Execute research programs
+
+**Flow Diagram**:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI
+    participant Kernel
+    participant Attention
+    participant Memory
+    participant Reasoning
+    participant Society
+    
+    User->>CLI: modelx cognitive reason "Analyze data"
+    CLI->>Kernel: Request reasoning
+    Kernel->>Attention: Allocate attention
+    Attention-->>Kernel: Attention granted
+    Kernel->>Memory: Retrieve context
+    Memory-->>Kernel: Context returned
+    Kernel->>Reasoning: Perform reasoning
+    Reasoning-->>Kernel: Result
+    Kernel->>Society: Plan collaboration if needed
+    Society-->>Kernel: Plan ready
+    Kernel-->>CLI: Final result
+    CLI-->>User: Formatted output
+```
 
 ### Phase 7: Multi-Modal Context
 
@@ -457,6 +687,71 @@ modelx swarm scale --directors 10 --sub-orchestrators 50
 modelx swarm shutdown
 ```
 
+### Cognitive OS (Phase 13)
+
+```bash
+# Get cognitive kernel status
+modelx cognitive status
+
+# Perform reasoning
+modelx cognitive reason "Analyze the data trends"
+
+# Allocate attention to task
+modelx cognitive attend "Data analysis task" --priority 0.8
+```
+
+### Agent Society (Phase 13)
+
+```bash
+# Create agent society
+modelx society create "Research Team" "Collaborative research"
+
+# List societies
+modelx society list
+
+# Add agent to society
+modelx society add-agent soc_001 agent_123
+```
+
+### Identity & Missions (Phase 13)
+
+```bash
+# Get identity status
+modelx identity status
+
+# Create mission
+modelx identity create-mission "AI Safety Research" "Develop safe AI systems"
+
+# List missions
+modelx identity missions
+```
+
+### Research Programs (Phase 13)
+
+```bash
+# Create research program
+modelx research create-program "AI Alignment" "Safety"
+
+# Schedule program
+modelx research schedule prog_001 --frequency daily
+
+# List programs
+modelx research list
+```
+
+### Autonomous Development (Phase 13)
+
+```bash
+# Analyze component
+modelx develop analyze cognitive_kernel
+
+# Optimize repository
+modelx develop optimize
+
+# Generate improvement plan
+modelx develop improve --safety-level moderate
+```
+
 ### Output Formats
 
 ```bash
@@ -532,6 +827,41 @@ curl -H "Authorization: Bearer YOUR_API_KEY" http://localhost:8000/api/v1/goals
 - `POST /api/v1/swarm/initialize` - Initialize swarm
 - `POST /api/v1/swarm/shutdown` - Shutdown swarm
 
+#### Cognitive OS (Phase 13)
+
+- `GET /api/v1/cognitive/status` - Get cognitive kernel status
+- `POST /api/v1/cognitive/reason` - Perform reasoning
+- `POST /api/v1/cognitive/attend` - Allocate attention to task
+- `GET /api/v1/cognitive/attention` - Get attention records
+- `GET /api/v1/cognitive/metrics` - Get cognitive metrics
+
+#### Agent Society (Phase 13)
+
+- `POST /api/v1/society/create` - Create agent society
+- `GET /api/v1/society/list` - List societies
+- `POST /api/v1/society/add-agent` - Add agent to society
+- `GET /api/v1/society/{id}` - Get society details
+
+#### Identity & Missions (Phase 13)
+
+- `GET /api/v1/identity/status` - Get identity status
+- `POST /api/v1/identity/missions` - Create mission
+- `GET /api/v1/identity/missions` - List missions
+- `GET /api/v1/identity/missions/{id}` - Get mission details
+
+#### Research Programs (Phase 13)
+
+- `POST /api/v1/research/programs` - Create research program
+- `GET /api/v1/research/programs` - List programs
+- `POST /api/v1/research/programs/{id}/schedule` - Schedule program
+- `GET /api/v1/research/programs/{id}` - Get program details
+
+#### Autonomous Development (Phase 13)
+
+- `POST /api/v1/development/analyze` - Analyze component
+- `GET /api/v1/development/optimize` - Get optimization opportunities
+- `POST /api/v1/development/improve` - Generate improvement plan
+
 ### Interactive API Documentation
 
 Start the server and visit:
@@ -602,17 +932,26 @@ CLI configuration is stored in `~/.modelx/config.json`:
 ```
 ModelX/
 ├── src/
-│   ├── agents/           # Agent implementations
+│   ├── agents/           # Agent implementations and LangGraph nodes
 │   ├── api/              # FastAPI routes and middleware
 │   ├── cli/              # Command-line interface
 │   ├── db/               # Database models and migrations
 │   ├── memory/           # Memory subsystems
+│   ├── cognitive_kernel/ # Phase 13A: Cognitive Kernel
+│   ├── cognitive_attention/ # Phase 13C: Attention System
+│   ├── reasoning/        # Phase 13D: Unified Reasoning Engine
+│   ├── cognitive_communication/ # Phase 13E: Communication Bus
+│   ├── agent_society/    # Phase 13F: Agent Society Runtime
+│   ├── identity/          # Phase 13G: Long-Term Identity
+│   ├── research_programs/ # Phase 13H: Research Programs
+│   ├── autonomous_development/ # Phase 13I: Self-Development
 │   ├── multimodal/       # Phase 7: Vision processing
 │   ├── swarm/            # Phase 8: Swarm orchestration
 │   ├── world_model/      # World model and belief engine
 │   ├── evolution/        # Architecture evolution
 │   └── config/           # Configuration management
-├── tests/                # Test suites
+├── tests/
+│   └── integration/      # Integration tests (Phase 13)
 ├── docs/                 # Documentation
 ├── alembic/              # Database migrations
 ├── docker-compose.yml    # Infrastructure services
@@ -721,6 +1060,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🗺️ Roadmap
 
+- [x] Phase 13: Cognitive Operating System - Unified cognitive organism
+- [x] Phase 7: Multi-Modal Context - Vision processing
+- [x] Phase 8: Swarm Orchestration - Large-scale agent coordination
 - [ ] Enhanced vision capabilities (video processing, OCR improvements)
 - [ ] Advanced swarm strategies (reinforcement learning-based)
 - [ ] Real-time collaboration features
@@ -728,6 +1070,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] Cloud deployment templates
 - [ ] Performance optimizations
 - [ ] Additional LLM provider integrations
+- [ ] Cognitive OS enhancements (advanced reasoning, better attention models)
 
 ---
 
