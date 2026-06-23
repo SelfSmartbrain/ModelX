@@ -82,6 +82,9 @@ dependencies = [
     # Logging & Observability
     "structlog>=24.0.0",
 
+    # System Monitoring
+    "psutil>=6.0.0",
+
     # Resilience
     "tenacity>=9.0.0",
 
