@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr = Field(
         ..., description="Anthropic API key for Claude access"
     )
+    anthropic_base_url: str | None = Field(
+        default=None,
+        description="Custom base URL for Anthropic API (e.g., OpenRouter)",
+    )
     anthropic_model: str = Field(
         default="claude-sonnet-4-20250514",
         description="Claude model identifier",
