@@ -52,6 +52,15 @@ from src.db.enums import (
     GoalStatus,
     FailureSeverity,
     CognitiveMetricType,
+    CognitiveState,
+    AttentionLevel,
+    ReasoningMode,
+    SocietyStatus,
+    AgentStatus,
+    MissionStatus,
+    GoalStatus as MissionGoalStatus,
+    ProgramStatus,
+    TaskMarketStatus,
 )
 
 
@@ -2227,3 +2236,229 @@ class SwarmSubTask(Base):
 
     def __repr__(self) -> str:
         return f"<SwarmSubTask id={self.id!s} status={self.status!r} progress={self.progress}>"
+
+
+# ---------------------------------------------------------------------------
+# Phase 13: Cognitive Operating System Models
+# ---------------------------------------------------------------------------
+
+
+class CognitiveTask(Base):
+    """A cognitive task managed by the cognitive kernel."""
+
+    __tablename__ = "cognitive_tasks"
+    __table_args__ = (
+        Index("ix_cognitive_tasks_status", "status"),
+        Index("ix_cognitive_tasks_priority", "priority"),
+        Index("ix_cognitive_tasks_created_at", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    task_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
+    priority: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    requires_attention: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    attention_allocated: Mapped[float] = mapped_column(Float, nullable=True)
+    cognitive_resources: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<CognitiveTask id={self.id!s} type={self.task_type!r} status={self.status!r}>"
+
+
+class AttentionRecord(Base):
+    """Record of attention allocation and usage."""
+
+    __tablename__ = "attention_records"
+    __table_args__ = (
+        Index("ix_attention_records_task", "task_id"),
+        Index("ix_attention_records_level", "attention_level"),
+        Index("ix_attention_records_created_at", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    task_id: Mapped[UUID | None] = mapped_column(String(255), nullable=True)
+    attention_level: Mapped[AttentionLevel] = mapped_column(
+        Enum(AttentionLevel, name="attention_level", create_constraint=True),
+        nullable=False,
+    )
+    allocated_amount: Mapped[float] = mapped_column(Float, nullable=False)
+    duration: Mapped[float] = mapped_column(Float, nullable=False)
+    processing_mode: Mapped[str] = mapped_column(String(50), nullable=False)
+    cognitive_resources: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return f"<AttentionRecord id={self.id!s} level={self.attention_level.value!r}>"
+
+
+class MemoryLink(Base):
+    """Links between memories in the unified memory graph."""
+
+    __tablename__ = "memory_links"
+    __table_args__ = (
+        Index("ix_memory_links_source", "source_memory_id"),
+        Index("ix_memory_links_target", "target_memory_id"),
+        Index("ix_memory_links_type", "link_type"),
+        Index("ix_memory_links_strength", "strength"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    source_memory_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    target_memory_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    link_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    strength: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata", JSONB, nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return f"<MemoryLink id={self.id!s} type={self.link_type!r} strength={self.strength:.2f}>"
+
+
+class ResearchProgram(Base):
+    """A long-running autonomous research program."""
+
+    __tablename__ = "research_programs"
+    __table_args__ = (
+        Index("ix_research_programs_status", "status"),
+        Index("ix_research_programs_domain", "domain"),
+        Index("ix_research_programs_created_at", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    domain: Mapped[str] = mapped_column(String(100), nullable=False)
+    status: Mapped[ProgramStatus] = mapped_column(
+        Enum(ProgramStatus, name="program_status", create_constraint=True),
+        nullable=False,
+        default=ProgramStatus.DRAFT,
+    )
+    hypotheses: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    experiments: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    insights: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+    progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata", JSONB, nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<ResearchProgram id={self.id!s} title={self.title!r} status={self.status.value!r}>"
+
+
+class AgentIdentity(Base):
+    """Identity information for an agent in the society."""
+
+    __tablename__ = "agent_identities"
+    __table_args__ = (
+        Index("ix_agent_identities_agent_id", "agent_id"),
+        Index("ix_agent_identities_status", "status"),
+        Index("ix_agent_identities_type", "agent_type"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    agent_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    agent_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    status: Mapped[AgentStatus] = mapped_column(
+        Enum(AgentStatus, name="agent_status", create_constraint=True),
+        nullable=False,
+        default=AgentStatus.IDLE,
+    )
+    capabilities: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    reputation: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    core_values: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True)
+    personality_traits: Mapped[dict[str, float] | None] = mapped_column(JSONB, nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata", JSONB, nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_active: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    def __repr__(self) -> str:
+        return f"<AgentIdentity id={self.id!s} agent_id={self.agent_id!r} status={self.status.value!r}>"
+
+
+class MissionState(Base):
+    """A long-term mission for the identity system."""
+
+    __tablename__ = "mission_states"
+    __table_args__ = (
+        Index("ix_mission_states_status", "status"),
+        Index("ix_mission_states_created_at", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[MissionStatus] = mapped_column(
+        Enum(MissionStatus, name="mission_status", create_constraint=True),
+        nullable=False,
+        default=MissionStatus.DRAFT,
+    )
+    goals: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    results: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata", JSONB, nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<MissionState id={self.id!s} title={self.title!r} status={self.status.value!r}>"
+
+
+class CognitiveMetric(Base):
+    """Cognitive performance metrics for the system."""
+
+    __tablename__ = "cognitive_metrics"
+    __table_args__ = (
+        Index("ix_cognitive_metrics_type", "metric_type"),
+        Index("ix_cognitive_metrics_timestamp", "timestamp"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    metric_type: Mapped[CognitiveMetricType] = mapped_column(
+        Enum(CognitiveMetricType, name="cognitive_metric_type", create_constraint=True),
+        nullable=False,
+    )
+    value: Mapped[float] = mapped_column(Float, nullable=False)
+    context: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return f"<CognitiveMetric id={self.id!s} type={self.metric_type.value!r} value={self.value:.2f}>"
