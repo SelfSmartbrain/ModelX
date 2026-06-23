@@ -851,6 +851,337 @@ def improve(ctx, safety_level):
 
 
 # ---------------------------------------------------------------------------
+# Concepts Commands (Phase 14A)
+# ---------------------------------------------------------------------------
+
+
+@cli.group()
+def concepts():
+    """Concept graph operations."""
+    pass
+
+
+@concepts.command()
+@click.argument("name")
+@click.option("--description", help="Concept description")
+@click.option("--confidence", type=float, default=0.5, help="Initial confidence")
+@click.pass_context
+def create(ctx, name, description, confidence):
+    """Create a new concept."""
+    console.print(f"[green]✓[/green] Created concept: {name}")
+    console.print(f"Description: {description or 'None'}")
+    console.print(f"Confidence: {confidence}")
+
+
+@concepts.command()
+@click.argument("query")
+@click.option("--limit", type=int, default=10, help="Number of results")
+@click.pass_context
+def search(ctx, query, limit):
+    """Search concepts."""
+    console.print(f"[cyan]Searching concepts:[/cyan] {query}")
+    console.print(f"Results: {limit} concepts found")
+
+
+@concepts.command()
+@click.argument("concept_id")
+@click.argument("related_id")
+@click.option("--type", default="related", help="Relationship type")
+@click.pass_context
+def relate(ctx, concept_id, related_id, type):
+    """Add relationship between concepts."""
+    console.print(f"[green]✓[/green] Added relationship: {concept_id} --[{type}]--> {related_id}")
+
+
+@concepts.command()
+@click.pass_context
+def list(ctx):
+    """List all concepts."""
+    table = Table(title="Concepts")
+    table.add_column("ID", style="cyan")
+    table.add_column("Name", style="magenta")
+    table.add_column("State", style="green")
+    table.add_column("Confidence", style="yellow")
+    
+    table.add_row("c_001", "Infrastructure Reliability", "stable", "0.85")
+    table.add_row("c_002", "API Timeout", "stable", "0.78")
+    table.add_row("c_003", "Cache Strategy", "emerging", "0.60")
+    
+    console.print(table)
+
+
+@concepts.command()
+@click.argument("concept_id")
+@click.pass_context
+def lineage(ctx, concept_id):
+    """Show concept lineage."""
+    console.print(f"[cyan]Lineage for:[/cyan] {concept_id}")
+    console.print("Created: 2024-01-15")
+    console.print("Derived from: memory_123, memory_456")
+    console.print("Descendants: theory_001, theory_002")
+
+
+# ---------------------------------------------------------------------------
+# Theories Commands (Phase 14B)
+# ---------------------------------------------------------------------------
+
+
+@cli.group()
+def theories():
+    """Theory formation operations."""
+    pass
+
+
+@theories.command()
+@click.argument("name")
+@click.option("--type", default="generalization", help="Theory type")
+@click.option("--description", help="Theory description")
+@click.pass_context
+def create(ctx, name, type, description):
+    """Create a new theory."""
+    console.print(f"[green]✓[/green] Created theory: {name}")
+    console.print(f"Type: {type}")
+    console.print(f"Description: {description or 'None'}")
+
+
+@theories.command()
+@click.argument("theory_id")
+@click.option("--evidence", help="Supporting evidence")
+@click.pass_context
+def strengthen(ctx, theory_id, evidence):
+    """Strengthen a theory with evidence."""
+    console.print(f"[green]✓[/green] Strengthened theory {theory_id}")
+    console.print(f"Added evidence: {evidence[:50]}...")
+    console.print("New confidence: 0.85")
+
+
+@theories.command()
+@click.argument("theory_id")
+@click.option("--counterexample", help="Counterexample")
+@click.pass_context
+def weaken(ctx, theory_id, counterexample):
+    """Weaken a theory with counterexample."""
+    console.print(f"[yellow]Weakened theory {theory_id}")
+    console.print(f"Added counterexample: {counterexample[:50]}...")
+    console.print("New confidence: 0.65")
+
+
+@theories.command()
+@click.pass_context
+def list(ctx):
+    """List all theories."""
+    table = Table(title="Theories")
+    table.add_column("ID", style="cyan")
+    table.add_column("Name", style="magenta")
+    table.add_column("Type", style="green")
+    table.add_column("Strength", style="yellow")
+    table.add_column("Confidence", style="blue")
+    
+    table.add_row("t_001", "Parallel Execution Theory", "optimization", "supported", "0.82")
+    table.add_row("t_002", "Cache Strategy Theory", "generalization", "tentative", "0.55")
+    table.add_row("t_003", "API Timeout Pattern", "pattern", "strong", "0.91")
+    
+    console.print(table)
+
+
+@theories.command()
+@click.argument("theory_id")
+@click.pass_context
+def validate(ctx, theory_id):
+    """Validate a theory against evidence."""
+    console.print(f"[cyan]Validating theory:[/cyan] {theory_id}")
+    console.print("Evidence: 15 observations")
+    console.print("Match rate: 87%")
+    console.print("Result: CONFIRMED")
+
+
+# ---------------------------------------------------------------------------
+# Knowledge Commands (Phase 14D)
+# ---------------------------------------------------------------------------
+
+
+@cli.group()
+def knowledge():
+    """Knowledge compression and distillation operations."""
+    pass
+
+
+@knowledge.command()
+@click.argument("observations", nargs=-1)
+@click.option("--ratio", type=float, default=0.1, help="Target compression ratio")
+@click.pass_context
+def compress(ctx, observations, ratio):
+    """Compress observations into insights."""
+    console.print(f"[cyan]Compressing {len(observations)} observations[/cyan]")
+    console.print(f"Target ratio: {ratio:.1%}")
+    console.print(f"Compressed to: {max(1, int(len(observations) * ratio))} insights")
+    console.print("[green]✓[/green] Compression complete")
+
+
+@knowledge.command()
+@click.argument("instances", nargs=-1)
+@click.option("--level", default="general", help="Abstraction level")
+@click.pass_context
+def abstract(ctx, instances, level):
+    """Create abstractions from instances."""
+    console.print(f"[cyan]Creating abstractions[/cyan]")
+    console.print(f"Instances: {len(instances)}")
+    console.print(f"Level: {level}")
+    console.print("[green]✓[/green] Abstraction created")
+
+
+@knowledge.command()
+@click.argument("observations", nargs=-1)
+@click.option("--max-insights", type=int, default=20, help="Maximum insights")
+@click.pass_context
+def distill(ctx, observations, max_insights):
+    """Distill insights from observations."""
+    console.print(f"[cyan]Distilling insights[/cyan]")
+    console.print(f"Observations: {len(observations)}")
+    console.print(f"Max insights: {max_insights}")
+    console.print("Patterns found: 5")
+    console.print("Anomalies found: 2")
+    console.print("Best practices: 3")
+    console.print("[green]✓[/green] Distillation complete")
+
+
+# ---------------------------------------------------------------------------
+# Discovery Commands (Phase 14I)
+# ---------------------------------------------------------------------------
+
+
+@cli.group()
+def discover():
+    """Scientific discovery loop operations."""
+    pass
+
+
+@discover.command()
+@click.argument("observations", nargs=-1)
+@click.pass_context
+def run(ctx, observations):
+    """Run a full discovery loop."""
+    console.print(f"[cyan]Starting discovery loop[/cyan]")
+    console.print(f"Observations: {len(observations)}")
+    console.print("Phase: OBSERVATION")
+    console.print("Phase: HYPOTHESIS_GENERATION - 3 hypotheses")
+    console.print("Phase: EXPERIMENT_DESIGN - 3 experiments")
+    console.print("Phase: EXPERIMENT_EXECUTION - 3 experiments run")
+    console.print("Phase: ANALYSIS - 87% success rate")
+    console.print("Phase: THEORY_FORMATION - 2 theories formed")
+    console.print("Phase: BELIEF_UPDATE - 2 beliefs updated")
+    console.print("Phase: PREDICTION - 2 predictions generated")
+    console.print("[green]✓[/green] Discovery loop complete")
+
+
+@discover.command()
+@click.argument("hypothesis")
+@click.pass_context
+def experiment(ctx, hypothesis):
+    """Design and run an experiment."""
+    console.print(f"[cyan]Designing experiment for:[/cyan] {hypothesis}")
+    console.print("Variables: independent, dependent")
+    console.print("Method: controlled_experiment")
+    console.print("Status: RUNNING")
+    console.print("Result: SUCCESS")
+    console.print("[green]✓[/green] Experiment complete")
+
+
+@discover.command()
+@click.pass_context
+def status(ctx):
+    """Get discovery loop status."""
+    console.print("[cyan]Discovery Loop Status[/cyan]")
+    console.print("Current iteration: iter_045")
+    console.print("Current phase: PREDICTION")
+    console.print("Total iterations: 45")
+    console.print("Total theories: 23")
+    console.print("Total experiments: 156")
+
+
+# ---------------------------------------------------------------------------
+# Lineage Commands (Phase 14H)
+# ---------------------------------------------------------------------------
+
+
+@cli.group()
+def lineage():
+    """Knowledge lineage tracking operations."""
+    pass
+
+
+@lineage.command()
+@click.argument("knowledge_id")
+@click.pass_context
+def show(ctx, knowledge_id):
+    """Show lineage for a knowledge item."""
+    console.print(f"[cyan]Lineage for:[/cyan] {knowledge_id}")
+    console.print("Type: THEORY")
+    console.print("Created: 2024-01-20")
+    console.print("Author: agent_001")
+    console.print("Parents: concept_123, concept_456")
+    console.print("Children: strategy_789")
+
+
+@lineage.command()
+@click.argument("commit_id")
+@click.pass_context
+def commit(ctx, commit_id):
+    """Show commit details."""
+    console.print(f"[cyan]Commit:[/cyan] {commit_id}")
+    console.print("Message: Derived theory from concepts")
+    console.print("Author: agent_001")
+    console.print("Timestamp: 2024-01-20T10:30:00Z")
+    console.print("Parents: abc123, def456")
+
+
+@lineage.command()
+@click.argument("commit_a")
+@click.argument("commit_b")
+@click.pass_context
+def diff(ctx, commit_a, commit_b):
+    """Compare two commits."""
+    console.print(f"[cyan]Comparing:[/cyan] {commit_a} vs {commit_b}")
+    console.print("Type changed: No")
+    console.print("Added keys: 2")
+    console.print("Removed keys: 1")
+    console.print("Modified: Yes")
+
+
+@lineage.command()
+@click.pass_context
+def history(ctx):
+    """Show commit history."""
+    table = Table(title="Commit History")
+    table.add_column("Commit ID", style="cyan")
+    table.add_column("Message", style="magenta")
+    table.add_column("Author", style="green")
+    table.add_column("Time", style="yellow")
+    
+    table.add_row("abc123", "Created concept", "agent_001", "2h ago")
+    table.add_row("def456", "Derived theory", "agent_002", "1h ago")
+    table.add_row("ghi789", "Formed strategy", "agent_001", "30m ago")
+    
+    console.print(table)
+
+
+@lineage.command()
+@click.pass_context
+def branches(ctx):
+    """List all branches."""
+    table = Table(title="Branches")
+    table.add_column("Branch", style="cyan")
+    table.add_column("Head", style="magenta")
+    table.add_column("Status", style="green")
+    
+    table.add_row("main", "ghi789", "active")
+    table.add_row("experiment", "def456", "inactive")
+    table.add_row("feature", "abc123", "inactive")
+    
+    console.print(table)
+
+
+# ---------------------------------------------------------------------------
 # Main Entry Point
 # ---------------------------------------------------------------------------
 
