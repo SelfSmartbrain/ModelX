@@ -50,6 +50,32 @@ LEARNING_VELOCITY = Gauge(
     "Rate of new knowledge/skill acquisition"
 )
 
+# Phase 17: Runtime Metrics
+OBJECTIVE_COMPLETION_RATE = Gauge(
+    "objective_completion_rate",
+    "Rate of objectives successfully completed"
+)
+
+OBJECTIVE_FAILURE_RATE = Gauge(
+    "objective_failure_rate",
+    "Rate of objectives that failed"
+)
+
+RUNTIME_UTILIZATION = Gauge(
+    "runtime_utilization",
+    "Current runtime utilization (0.0 to 1.0)"
+)
+
+AVERAGE_CYCLE_TIME = Gauge(
+    "average_cycle_time_seconds",
+    "Average time to complete an objective cycle"
+)
+
+ACTIVE_OBJECTIVES = Gauge(
+    "active_objectives",
+    "Number of currently active objectives"
+)
+
 
 def setup_prometheus(app: FastAPI) -> None:
     """Mount Prometheus metrics endpoint on the FastAPI app."""
