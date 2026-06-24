@@ -113,3 +113,13 @@ async def world_model_update(state: Dict[str, Any]) -> Dict[str, Any]:
     predictions = state.get("predictions", [])
     model_state = await updater.update_model(beliefs, predictions)
     return {"world_model_state": model_state}
+
+
+pattern_discovery_node = pattern_discovery
+causal_reasoning_node = causal_reasoning
+hypothesis_generation_node = hypothesis_generation
+experiment_design_node = experiment_design
+experiment_execution_node = experiment_execution
+belief_update_node = belief_update
+prediction_generation_node = prediction_generation
+world_model_update_node = world_model_update
