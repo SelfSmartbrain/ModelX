@@ -110,7 +110,7 @@ class CognitiveBus:
     
     async def emit(
         self,
-        event_type: EventType,
+        event_type: EventType | str,
         data: Dict[str, Any],
         source: str = "unknown",
     ) -> str:
@@ -125,8 +125,9 @@ class CognitiveBus:
         Returns:
             Event ID
         """
+        resolved_event_type = event_type if isinstance(event_type, EventType) else EventType(event_type)
         event = CognitiveEvent(
-            event_type=event_type,
+            event_type=resolved_event_type,
             data=data,
             source=source,
         )
@@ -139,7 +140,7 @@ class CognitiveBus:
         if len(self._event_history) > self._max_history:
             self._event_history.pop(0)
         
-        logger.debug(f"Emitted event {event.event_id} of type {event_type.value}")
+        logger.debug(f"Emitted event {event.event_id} of type {resolved_event_type.value}")
         return event.event_id
     
     async def _process_events(self) -> None:
@@ -190,12 +191,11 @@ class CognitiveBus:
             event_type: Type of event to subscribe to
             callback: Callback function to handle the event
         """
-        async with self._lock:
-            if event_type not in self._subscribers:
-                self._subscribers[event_type] = []
-            self._subscribers[event_type].append(callback)
-            
-            logger.debug(f"Subscribed to {event_type.value} events")
+        if event_type not in self._subscribers:
+            self._subscribers[event_type] = []
+        self._subscribers[event_type].append(callback)
+        
+        logger.debug(f"Subscribed to {event_type.value} events")
     
     def unsubscribe(
         self,
@@ -209,11 +209,10 @@ class CognitiveBus:
             event_type: Type of event to unsubscribe from
             callback: Callback function to remove
         """
-        async with self._lock:
-            if event_type in self._subscribers:
-                if callback in self._subscribers[event_type]:
-                    self._subscribers[event_type].remove(callback)
-                    logger.debug(f"Unsubscribed from {event_type.value} events")
+        if event_type in self._subscribers:
+            if callback in self._subscribers[event_type]:
+                self._subscribers[event_type].remove(callback)
+                logger.debug(f"Unsubscribed from {event_type.value} events")
     
     def get_event_history(
         self,
