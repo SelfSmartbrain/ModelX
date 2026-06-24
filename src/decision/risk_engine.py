@@ -7,12 +7,14 @@ Quantifies risk, confidence, and uncertainty in decisions.
 from __future__ import annotations
 
 import uuid
-from typing import Dict, List, Optional, Any
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from enum import Enum
 from dataclasses import dataclass, field
 
 from src.config.logging import get_logger
-from src.decision.decision_engine import DecisionOption, DecisionContext
+
+if TYPE_CHECKING:
+    from src.decision.decision_engine import DecisionContext, DecisionOption
 
 logger = get_logger(__name__)
 
