@@ -53,3 +53,43 @@ async def capability_reporting(state: Dict[str, Any]) -> Dict[str, Any]:
     logger.info("Executing capability_reporting node.")
     report = {"report_id": "rep-123", "status": "generated"}
     return {"capability_report": report}
+
+
+async def capability_gap_detection_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    logger.info("Executing capability_gap_detection_node.")
+    return {"capability_gaps": []}
+
+
+async def tool_specification_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    logger.info("Executing tool_specification_node.")
+    return {"tool_specifications": []}
+
+
+async def tool_generation_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    logger.info("Executing tool_generation_node.")
+    return {"generated_tools": []}
+
+
+async def tool_validation_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    logger.info("Executing tool_validation_node.")
+    return {"tool_validation_results": []}
+
+
+async def tool_registration_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    logger.info("Executing tool_registration_node.")
+    return {"registered_tools": []}
+
+
+async def tool_evolution_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    logger.info("Executing tool_evolution_node.")
+    return {"tool_evolution_results": []}
+
+
+capability_evaluation_node = capability_evaluation
+benchmark_execution_node = benchmark_execution
+transfer_analysis_node = transfer_analysis
+discovery_analysis_node = discovery_analysis
+peer_review_node = peer_review
+regression_detection_node = regression_detection
+program_evaluation_node = program_evaluation
+capability_reporting_node = capability_reporting
