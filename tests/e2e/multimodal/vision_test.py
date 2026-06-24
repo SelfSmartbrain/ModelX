@@ -1,6 +1,6 @@
 """E2E Tests for Multi-Modal Vision Processing (Phase 7)."""
 
-from __future__ annotations
+from __future__ import annotations
 
 import pytest
 import asyncio
