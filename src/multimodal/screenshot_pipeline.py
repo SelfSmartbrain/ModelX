@@ -3,7 +3,7 @@
 Manages the end-to-end pipeline for capturing, processing, and storing screenshots.
 """
 
-from __future__ annotations
+from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
