@@ -3,7 +3,7 @@
 Balances load across sub-orchestrators and directors.
 """
 
-from __future__ annotations
+from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 from uuid import UUID
