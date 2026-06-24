@@ -232,7 +232,7 @@ class PrebuiltModels:
                 "Update to posterior probability",
                 "Repeat as new evidence arrives",
             ],
-            heuristics[
+            heuristics=[
                 "Prior beliefs matter but should be updatable",
                 "Strong evidence can overcome weak priors",
                 "Consider base rates",
@@ -256,7 +256,7 @@ class PrebuiltModels:
                 "Avoid those failure modes",
                 "Proceed with confidence",
             ],
-            heuristics[
+            heuristics=[
                 "It's easier to avoid stupidity than be brilliant",
                 "Tell me where I'm going to die so I don't go there",
                 "Negation is often easier than affirmation",
@@ -280,7 +280,7 @@ class PrebuiltModels:
                 "Combine sub-solutions",
                 "Verify overall solution",
             ],
-            heuristics[
+            heuristics=[
                 "Sub-problems should be independent",
                 "Recursion is often useful",
                 "Parallelize when possible",
