@@ -1,6 +1,6 @@
 """Swarm Orchestration API Routes (Phase 8)."""
 
-from __future__ annotations
+from __future__ import annotations
 
 from typing import Any, List
 from uuid import UUID
