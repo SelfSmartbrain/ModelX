@@ -1333,23 +1333,6 @@ class CognitiveSkillExecution(Base):
     skill: Mapped[CognitiveSkill] = relationship(back_populates="executions")
 
 
-class CognitiveMetric(Base):
-    """Recorded cognitive intelligence metric for growth tracking."""
-
-    __tablename__ = "cognitive_metrics"
-    __table_args__ = (
-        Index("ix_cognitive_metrics_name", "metric_name"),
-        Index("ix_cognitive_metrics_recorded_at", "recorded_at"),
-    )
-
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
-    metric_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    metric_value: Mapped[float] = mapped_column(Float, nullable=False)
-    metadata_: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSONB, nullable=True)
-    recorded_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-
 # ---------------------------------------------------------------------------
 # Phase 7.6: Benchmarks and Validation
 # ---------------------------------------------------------------------------
@@ -1853,19 +1836,6 @@ class PeerReview(Base):
     status: Mapped[str] = mapped_column(String(50), nullable=False) # accepted, rejected, disputed
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-class ResearchProgram(Base):
-    """Long-horizon, open-ended macro research objectives."""
-    __tablename__ = "research_programs"
-
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[str] = mapped_column(String(50), nullable=False, default="active")
-    objective: Mapped[str] = mapped_column(Text, nullable=False)
-    progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
 class CapabilityRegression(Base):
     """Triggers and logs when evolutionary steps reduce capability."""
     __tablename__ = "capability_regressions"
@@ -2091,7 +2061,7 @@ class InteractionLog(Base):
     text_input: Mapped[str | None] = mapped_column(Text, nullable=True)
     success: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # Relationships
@@ -2121,7 +2091,7 @@ class DirectorAgent(Base):
     current_sub_orchestrators: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     active_goals_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     total_goals_completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_activity_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -2155,7 +2125,7 @@ class SwarmGoal(Base):
     sub_task_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     completed_sub_tasks: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -2188,7 +2158,7 @@ class SubOrchestrator(Base):
     avg_task_duration: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     success_rate: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_activity_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -2224,7 +2194,7 @@ class SwarmSubTask(Base):
     result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -2337,6 +2307,7 @@ class ResearchProgram(Base):
         Index("ix_research_programs_status", "status"),
         Index("ix_research_programs_domain", "domain"),
         Index("ix_research_programs_created_at", "created_at"),
+        {"extend_existing": True}
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
@@ -2447,6 +2418,7 @@ class CognitiveMetric(Base):
     __table_args__ = (
         Index("ix_cognitive_metrics_type", "metric_type"),
         Index("ix_cognitive_metrics_timestamp", "timestamp"),
+        {"extend_existing": True}
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
