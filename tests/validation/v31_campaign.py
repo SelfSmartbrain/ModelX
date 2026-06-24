@@ -48,6 +48,7 @@ from enum import Enum
 import subprocess
 import tempfile
 import shutil
+from collections import Counter, defaultdict
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -248,7 +249,13 @@ class V31BenchmarkCampaign:
                 memory_usage_mb=result.get('memory_usage_mb', 0.0),
                 planning_quality=result.get('planning_quality', 0.0),
                 decision_quality=result.get('decision_quality', 0.0),
-                metadata=result.get('metadata', {}),
+                error_message=result.get('error_message'),
+                metadata={
+                    **result.get('metadata', {}),
+                    'task_type': task.task_type.value,
+                    'difficulty': task.difficulty,
+                    'expected_changes': task.expected_changes,
+                },
             )
 
         except Exception as e:
@@ -322,6 +329,7 @@ class V31BenchmarkCampaign:
             'avg_memory_usage_mb': sum(r.memory_usage_mb for r in results) / len(results),
             'avg_planning_quality': sum(r.planning_quality for r in results) / len(results),
             'avg_decision_quality': sum(r.decision_quality for r in results) / len(results),
+            'failure_distribution': self._calculate_failure_distribution(results),
             'by_task_type': {},
             'by_difficulty': {},
         }
@@ -346,6 +354,70 @@ class V31BenchmarkCampaign:
                 }
         
         return stats
+
+    def _calculate_failure_distribution(self, results: List[TaskResult]) -> Dict[str, Any]:
+        """Group failed tasks by the most likely failure cause."""
+        failed = [r for r in results if not r.success]
+        categories = Counter()
+        examples = defaultdict(list)
+
+        for result in failed:
+            category = self._classify_failure(result)
+            categories[category] += 1
+            if len(examples[category]) < 5:
+                examples[category].append({
+                    'task_id': result.task_id,
+                    'task_type': result.metadata.get('task_type'),
+                    'error': result.error_message,
+                })
+
+        return {
+            'total_failed': len(failed),
+            'by_category': dict(categories),
+            'examples': dict(examples),
+        }
+
+    def _classify_failure(self, result: TaskResult) -> str:
+        """Classify the dominant failure cause for a task result."""
+        if result.success:
+            return 'success'
+
+        metadata = result.metadata or {}
+        execution_result = metadata.get('execution_result') or {}
+        test_result = metadata.get('test_result') or {}
+        execution_errors = execution_result.get('errors') or []
+        test_errors = test_result.get('errors') or []
+        all_errors = " ".join(
+            str(error) for error in [result.error_message, *execution_errors, *test_errors]
+            if error
+        ).lower()
+
+        if any(token in all_errors for token in ['api', 'llm', 'anthropic', 'openrouter', 'rate limit', 'authentication', 'error code: 402']):
+            return 'provider_or_llm'
+
+        if result.error_message:
+            return 'task_execution_error'
+
+        if result.planning_quality < 0.4:
+            return 'planning'
+
+        if not result.patch_accepted:
+            if any(token in all_errors for token in ['file not found', 'failed to read', 'no such file']):
+                return 'repository_understanding'
+            if any(token in all_errors for token in ['old content not found', 'failed to apply']):
+                return 'patch_application'
+            return 'patch_generation'
+
+        if any(token in all_errors for token in ['no module named', 'modulenotfounderror', 'importerror']):
+            return 'dependency_issues'
+
+        if any(token in all_errors for token in ['syntaxerror', 'invalid syntax', 'outside async function']):
+            return 'syntax_errors'
+
+        if result.rollback_required or not test_result.get('success', True):
+            return 'test_failures'
+
+        return 'unknown'
     
     def _save_campaign_results(self, campaign_name: str, stats: Dict[str, Any], results: List[TaskResult]) -> None:
         """Save campaign results to file."""
@@ -377,6 +449,8 @@ class V31BenchmarkCampaign:
         
         # Add individual campaign results
         for campaign_name, config in self.campaigns.items():
+            if self.results and not self._has_results_for_campaign(campaign_name):
+                continue
             campaign_dir = self.output_dir / campaign_name
             stats_path = campaign_dir / "statistics.json"
             
@@ -423,6 +497,7 @@ class V31BenchmarkCampaign:
             "avg_memory_usage_mb": sum(r.memory_usage_mb for r in self.results) / len(self.results),
             "avg_planning_quality": sum(r.planning_quality for r in self.results) / len(self.results),
             "avg_decision_quality": sum(r.decision_quality for r in self.results) / len(self.results),
+            "failure_distribution": self._calculate_failure_distribution(self.results),
             "by_task_type": self._aggregate_by_task_type(),
         }
     
@@ -523,6 +598,8 @@ class V31BenchmarkCampaign:
             f.write("\n## Campaign Details\n\n")
             
             for campaign_name, config in self.campaigns.items():
+                if self.results and not self._has_results_for_campaign(campaign_name):
+                    continue
                 campaign_dir = self.output_dir / campaign_name
                 stats_path = campaign_dir / "statistics.json"
                 
@@ -537,8 +614,20 @@ class V31BenchmarkCampaign:
                     f.write(f"- **Success Rate:** {stats.get('success_rate', 0):.2%}\n")
                     f.write(f"- **Average Latency:** {stats.get('avg_latency_seconds', 0):.2f}s\n")
                     f.write(f"- **Total Cost:** ${stats.get('total_cost_usd', 0):.4f}\n\n")
+                    failure_distribution = stats.get('failure_distribution', {})
+                    by_category = failure_distribution.get('by_category', {})
+                    if by_category:
+                        f.write("#### Failure Distribution\n\n")
+                        for category, count in sorted(by_category.items(), key=lambda item: item[1], reverse=True):
+                            f.write(f"- **{category.replace('_', ' ').title()}:** {count}\n")
+                        f.write("\n")
         
         logger.info(f"Generated benchmark report at {report_path}")
+
+    def _has_results_for_campaign(self, campaign_name: str) -> bool:
+        """Return True if this process has task results for a campaign."""
+        prefix = f"{campaign_name}_"
+        return any(result.task_id.startswith(prefix) for result in self.results)
     
     def generate_capability_growth_report(self) -> None:
         """Generate capability growth report comparing subsystem contributions."""
@@ -641,6 +730,8 @@ async def main():
     elif args.campaign:
         # Run specific campaign
         stats = await campaign.run_campaign(args.campaign)
+        campaign.generate_benchmark_results_json()
+        campaign.generate_benchmark_report()
         print(f"\nCampaign {args.campaign} complete. Success rate: {stats['success_rate']:.2%}")
     else:
         # Run all campaigns
