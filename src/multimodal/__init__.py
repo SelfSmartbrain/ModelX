@@ -7,7 +7,7 @@ This module enables agents to process visual information including:
 - Multi-modal memory integration
 """
 
-from __future__ annotations
+from __future__ import annotations
 
 from src.multimodal.vision_processor import VisionProcessor
 from src.multimodal.screenshot_pipeline import ScreenshotPipeline
