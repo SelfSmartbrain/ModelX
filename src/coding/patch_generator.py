@@ -46,8 +46,8 @@ class PatchGenerator:
         llm_kwargs = {
             "model": settings.anthropic_model,
             "api_key": settings.anthropic_api_key.get_secret_value(),
-            "temperature": 0.1,
-            "max_tokens": 8192,
+            "temperature": settings.llm_temperature,
+            "max_tokens": settings.llm_max_tokens,
         }
         # Add custom base URL if using OpenRouter
         if settings.anthropic_base_url:
