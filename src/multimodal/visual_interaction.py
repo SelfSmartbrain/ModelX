@@ -3,7 +3,7 @@
 Agent that can autonomously interact with web applications using vision models.
 """
 
-from __future__ annotations
+from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
