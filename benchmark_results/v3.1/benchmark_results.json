@@ -1,0 +1,260 @@
+{
+  "campaign_version": "V3.1",
+  "timestamp": "2026-06-24 22:58:23",
+  "total_campaigns": 5,
+  "total_tasks": 20,
+  "campaigns": {
+    "smoke_test_campaign": {
+      "config": {
+        "repository_size": "small",
+        "target_task_count": 20,
+        "ablation_config": "full",
+        "repositories": [
+          "/Users/subh/Documents/ModelX"
+        ]
+      },
+      "statistics": {
+        "total_tasks": 20,
+        "successful_tasks": 0,
+        "failed_tasks": 20,
+        "success_rate": 0.0,
+        "avg_test_pass_rate": 0.0,
+        "patch_acceptance_rate": 0.5,
+        "rollback_rate": 1.0,
+        "avg_latency_seconds": 23.809777426719666,
+        "total_cost_usd": 10.575,
+        "avg_cost_usd": 0.5287499999999999,
+        "avg_memory_usage_mb": 29.51328125,
+        "avg_planning_quality": 0.75,
+        "avg_decision_quality": 0.41375,
+        "failure_distribution": {
+          "total_failed": 20,
+          "by_category": {
+            "syntax_errors": 10,
+            "patch_application": 1,
+            "provider_or_llm": 9
+          },
+          "examples": {
+            "syntax_errors": [
+              {
+                "task_id": "smoke_test_campaign_bug_fixing_0",
+                "task_type": "bug_fixing",
+                "error": null
+              },
+              {
+                "task_id": "smoke_test_campaign_bug_fixing_1",
+                "task_type": "bug_fixing",
+                "error": null
+              },
+              {
+                "task_id": "smoke_test_campaign_bug_fixing_2",
+                "task_type": "bug_fixing",
+                "error": null
+              },
+              {
+                "task_id": "smoke_test_campaign_bug_fixing_3",
+                "task_type": "bug_fixing",
+                "error": null
+              },
+              {
+                "task_id": "smoke_test_campaign_bug_fixing_4",
+                "task_type": "bug_fixing",
+                "error": null
+              }
+            ],
+            "patch_application": [
+              {
+                "task_id": "smoke_test_campaign_feature_implementation_0",
+                "task_type": "feature_implementation",
+                "error": null
+              }
+            ],
+            "provider_or_llm": [
+              {
+                "task_id": "smoke_test_campaign_feature_implementation_1",
+                "task_type": "feature_implementation",
+                "error": null
+              },
+              {
+                "task_id": "smoke_test_campaign_feature_implementation_2",
+                "task_type": "feature_implementation",
+                "error": null
+              },
+              {
+                "task_id": "smoke_test_campaign_feature_implementation_3",
+                "task_type": "feature_implementation",
+                "error": null
+              },
+              {
+                "task_id": "smoke_test_campaign_feature_implementation_4",
+                "task_type": "feature_implementation",
+                "error": null
+              },
+              {
+                "task_id": "smoke_test_campaign_refactoring_0",
+                "task_type": "refactoring",
+                "error": null
+              }
+            ]
+          }
+        },
+        "by_task_type": {
+          "bug_fixing": {
+            "total": 5,
+            "success_rate": 0.0,
+            "avg_latency": 29.794671630859376
+          },
+          "refactoring": {
+            "total": 5,
+            "success_rate": 0.0,
+            "avg_latency": 27.83888998031616
+          },
+          "test_generation": {
+            "total": 5,
+            "success_rate": 0.0,
+            "avg_latency": 17.102784729003908
+          },
+          "feature_implementation": {
+            "total": 5,
+            "success_rate": 0.0,
+            "avg_latency": 20.50276336669922
+          }
+        },
+        "by_difficulty": {
+          "easy": {
+            "total": 6,
+            "success_rate": 0.0
+          },
+          "medium": {
+            "total": 9,
+            "success_rate": 0.0
+          },
+          "hard": {
+            "total": 5,
+            "success_rate": 0.0
+          }
+        }
+      }
+    }
+  },
+  "aggregate_statistics": {
+    "total_tasks": 20,
+    "successful_tasks": 0,
+    "failed_tasks": 20,
+    "overall_success_rate": 0.0,
+    "avg_test_pass_rate": 0.0,
+    "patch_acceptance_rate": 0.5,
+    "rollback_rate": 1.0,
+    "avg_latency_seconds": 23.809777426719666,
+    "total_cost_usd": 10.575,
+    "avg_cost_usd": 0.5287499999999999,
+    "avg_memory_usage_mb": 29.51328125,
+    "avg_planning_quality": 0.75,
+    "avg_decision_quality": 0.41375,
+    "failure_distribution": {
+      "total_failed": 20,
+      "by_category": {
+        "syntax_errors": 10,
+        "patch_application": 1,
+        "provider_or_llm": 9
+      },
+      "examples": {
+        "syntax_errors": [
+          {
+            "task_id": "smoke_test_campaign_bug_fixing_0",
+            "task_type": "bug_fixing",
+            "error": null
+          },
+          {
+            "task_id": "smoke_test_campaign_bug_fixing_1",
+            "task_type": "bug_fixing",
+            "error": null
+          },
+          {
+            "task_id": "smoke_test_campaign_bug_fixing_2",
+            "task_type": "bug_fixing",
+            "error": null
+          },
+          {
+            "task_id": "smoke_test_campaign_bug_fixing_3",
+            "task_type": "bug_fixing",
+            "error": null
+          },
+          {
+            "task_id": "smoke_test_campaign_bug_fixing_4",
+            "task_type": "bug_fixing",
+            "error": null
+          }
+        ],
+        "patch_application": [
+          {
+            "task_id": "smoke_test_campaign_feature_implementation_0",
+            "task_type": "feature_implementation",
+            "error": null
+          }
+        ],
+        "provider_or_llm": [
+          {
+            "task_id": "smoke_test_campaign_feature_implementation_1",
+            "task_type": "feature_implementation",
+            "error": null
+          },
+          {
+            "task_id": "smoke_test_campaign_feature_implementation_2",
+            "task_type": "feature_implementation",
+            "error": null
+          },
+          {
+            "task_id": "smoke_test_campaign_feature_implementation_3",
+            "task_type": "feature_implementation",
+            "error": null
+          },
+          {
+            "task_id": "smoke_test_campaign_feature_implementation_4",
+            "task_type": "feature_implementation",
+            "error": null
+          },
+          {
+            "task_id": "smoke_test_campaign_refactoring_0",
+            "task_type": "refactoring",
+            "error": null
+          }
+        ]
+      }
+    },
+    "by_task_type": {
+      "bug_fixing": {
+        "total": 5,
+        "successful": 0,
+        "success_rate": 0.0,
+        "avg_latency": 29.794671630859376,
+        "avg_planning_quality": 0.75,
+        "avg_decision_quality": 0.49000000000000005
+      },
+      "refactoring": {
+        "total": 5,
+        "successful": 0,
+        "success_rate": 0.0,
+        "avg_latency": 27.83888998031616,
+        "avg_planning_quality": 0.75,
+        "avg_decision_quality": 0.35000000000000003
+      },
+      "test_generation": {
+        "total": 5,
+        "successful": 0,
+        "success_rate": 0.0,
+        "avg_latency": 17.102784729003908,
+        "avg_planning_quality": 0.75,
+        "avg_decision_quality": 0.43999999999999995
+      },
+      "feature_implementation": {
+        "total": 5,
+        "successful": 0,
+        "success_rate": 0.0,
+        "avg_latency": 20.50276336669922,
+        "avg_planning_quality": 0.75,
+        "avg_decision_quality": 0.375
+      }
+    }
+  }
+}
