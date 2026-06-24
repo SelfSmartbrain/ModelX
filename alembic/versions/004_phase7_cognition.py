@@ -14,7 +14,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "004"
+revision: str = "004_phase7_cognition"
 down_revision: Union[str, None] = "003"
 branch_labels: Union[str, None] = None
 depends_on: Union[str, None] = None
@@ -24,11 +24,20 @@ def upgrade() -> None:
     """Create Phase 7 tables for self-improving research intelligence."""
 
     # 1. Create failure_severity enum
-    failure_severity_enum = sa.Enum(
+    failure_severity_enum = postgresql.ENUM(
         "low", "medium", "high", "critical",
         name="failure_severity",
+        create_type=False,  # We'll create it manually
     )
-    failure_severity_enum.create(op.get_bind(), checkfirst=True)
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'failure_severity') THEN
+                CREATE TYPE failure_severity AS ENUM ('low', 'medium', 'high', 'critical');
+            END IF;
+        END
+        $$;
+    """)
 
     # 2. research_reflections
     op.create_table(
@@ -59,7 +68,7 @@ def upgrade() -> None:
         sa.Column("pattern_name", sa.String(255), nullable=False),
         sa.Column("description", sa.Text(), nullable=False),
         sa.Column("frequency", sa.Integer(), nullable=False, server_default="1"),
-        sa.Column("severity", failure_severity_enum, nullable=False, server_default="medium"),
+        sa.Column("severity", failure_severity_enum, nullable=False, server_default=sa.text("'medium'")),
         sa.Column("recommended_fix", sa.Text(), nullable=True),
         sa.Column("last_seen", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
@@ -167,4 +176,4 @@ def downgrade() -> None:
     op.drop_table("research_reflections")
 
     # Drop enum
-    sa.Enum(name="failure_severity").drop(op.get_bind(), checkfirst=True)
+    op.execute("DROP TYPE IF EXISTS failure_severity")
