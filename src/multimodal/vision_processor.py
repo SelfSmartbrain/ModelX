@@ -3,7 +3,7 @@
 Handles integration with vision models for screenshot analysis and visual understanding.
 """
 
-from __future__ annotations
+from __future__ import annotations
 
 import base64
 from io import BytesIO
