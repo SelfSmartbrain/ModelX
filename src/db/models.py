@@ -61,6 +61,7 @@ from src.db.enums import (
     GoalStatus as MissionGoalStatus,
     ProgramStatus,
     TaskMarketStatus,
+    ObjectiveStatus,
 )
 
 
@@ -2434,3 +2435,111 @@ class CognitiveMetric(Base):
 
     def __repr__(self) -> str:
         return f"<CognitiveMetric id={self.id!s} type={self.metric_type.value!r} value={self.value:.2f}>"
+
+
+# ---------------------------------------------------------------------------
+# Phase 17: Runtime Completion & Production Readiness
+# ---------------------------------------------------------------------------
+
+
+class Objective(Base):
+    """A durable unit of autonomous intent with persistence."""
+
+    __tablename__ = "objectives"
+    __table_args__ = (
+        Index("ix_objectives_status", "status"),
+        Index("ix_objectives_priority", "priority"),
+        Index("ix_objectives_created_at", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    objective_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    priority: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    status: Mapped[ObjectiveStatus] = mapped_column(
+        Enum(ObjectiveStatus, name="objective_status", create_constraint=True),
+        nullable=False,
+        default=ObjectiveStatus.ACTIVE,
+    )
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata", JSONB, nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    progress_records: Mapped[list["ObjectiveProgress"]] = relationship(
+        back_populates="objective", cascade="all, delete-orphan", lazy="selectin"
+    )
+    checkpoints: Mapped[list["ObjectiveCheckpoint"]] = relationship(
+        back_populates="objective", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+    def __repr__(self) -> str:
+        return f"<Objective id={self.id!s} objective_id={self.objective_id!r} status={self.status.value!r}>"
+
+
+class ObjectiveProgress(Base):
+    """Progress tracking for autonomous objectives."""
+
+    __tablename__ = "objective_progress"
+    __table_args__ = (
+        Index("ix_objective_progress_objective", "objective_id"),
+        Index("ix_objective_progress_status", "status"),
+        Index("ix_objective_progress_timestamp", "timestamp"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    objective_id: Mapped[UUID] = mapped_column(
+        ForeignKey("objectives.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    status: Mapped[str] = mapped_column(String(100), nullable=False)
+    detail: Mapped[str] = mapped_column(Text, nullable=True)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    # Relationships
+    objective: Mapped[Objective] = relationship(back_populates="progress_records")
+
+    def __repr__(self) -> str:
+        return f"<ObjectiveProgress id={self.id!s} objective={self.objective_id!s} status={self.status!r}>"
+
+
+class ObjectiveCheckpoint(Base):
+    """Checkpoint for objective state restoration."""
+
+    __tablename__ = "objective_checkpoints"
+    __table_args__ = (
+        Index("ix_objective_checkpoints_objective", "objective_id"),
+        Index("ix_objective_checkpoints_created_at", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=_generate_uuid7)
+    objective_id: Mapped[UUID] = mapped_column(
+        ForeignKey("objectives.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    checkpoint_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    state_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    progress_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata", JSONB, nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    # Relationships
+    objective: Mapped[Objective] = relationship(back_populates="checkpoints")
+
+    def __repr__(self) -> str:
+        return f"<ObjectiveCheckpoint id={self.id!s} objective={self.objective_id!s} name={self.checkpoint_name!r}>"
