@@ -3,7 +3,7 @@
 Worker agent that executes sub-tasks assigned by the Director.
 """
 
-from __future__ annotations
+from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
