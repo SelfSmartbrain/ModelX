@@ -3,7 +3,7 @@
 Top-level agent that manages sub-orchestrators for large-scale goals.
 """
 
-from __future__ annotations
+from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
