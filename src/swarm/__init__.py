@@ -6,7 +6,7 @@ This module enables hierarchical swarm architecture for large-scale goal executi
 - Distributed task coordination and load balancing
 """
 
-from __future__ annotations
+from __future__ import annotations
 
 from src.swarm.director import DirectorAgent
 from src.swarm.sub_orchestrator import SubOrchestrator
