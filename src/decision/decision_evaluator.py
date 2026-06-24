@@ -6,11 +6,13 @@ Scores options on utility, risk, and expected outcomes.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Any
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from dataclasses import dataclass
 
 from src.config.logging import get_logger
-from src.decision.decision_engine import DecisionContext, DecisionOption
+
+if TYPE_CHECKING:
+    from src.decision.decision_engine import DecisionContext, DecisionOption
 
 logger = get_logger(__name__)
 
