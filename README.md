@@ -50,6 +50,10 @@ ModelX aims to bridge the gap between reactive AI assistants and proactive, cont
 
 ### What's New
 
+- **Phase 17: Autonomous Runtime** - Production-ready execution loops, runtime metrics, and autonomy recovery
+- **Phase 16: Meta-Cognitive Governance** - Self-evolving governance, executive review boards, and outcome tracking
+- **Phase 15: Decision Intelligence** - Strategic agency and a marketplace for decision-making logic
+- **Phase 14: Epistemic Evolution** - Advanced knowledge graph, theory formation, and scientific discovery loops
 - **Phase 13: Cognitive Operating System** - Unified cognitive organism with centralized attention, memory abstraction, and reasoning orchestration
 - **Phase 7: Multi-Modal Context** - Vision models for UI screenshot analysis and visual web interaction
 - **Phase 8: Swarm Orchestration** - Hierarchical swarm architecture for large-scale goal execution
@@ -87,6 +91,20 @@ ModelX aims to bridge the gap between reactive AI assistants and proactive, cont
 - **Swarm Orchestration**: Director agents managing 50+ sub-orchestrator instances
 - **Load Balancing**: Multiple strategies (least_loaded, round_robin, weighted)
 - **Task Distribution**: Capability-based task distribution across swarm
+
+### Epistemic & Decision Intelligence (Phase 14-16)
+
+- **Knowledge Evolution**: Autonomous concept graph generation, theory formation, and scientific discovery
+- **Mental Models & Lineage**: Complex mental model caching and tracking lineage of generated knowledge
+- **Strategic Decision Making**: A decision marketplace where specialized agents evaluate risk and reward
+- **Meta-Cognitive Governance**: Executive review boards auditing assumptions, failures, and strategy mutations
+- **Policy Optimization**: Self-evolving governance policies
+
+### Production Runtime & Autonomy (Phase 17)
+
+- **Autonomous Execution Loop**: Async heartbeats, progress tracking, and robust objective management
+- **Resilience & Recovery**: Checkpoint managers, state recovery, and granular failure mitigation
+- **Runtime Metrics**: Built-in integrations for telemetry on agent performance
 
 ### CLI Features
 
@@ -439,6 +457,42 @@ sequenceDiagram
     Kernel-->>CLI: Final result
     CLI-->>User: Formatted output
 ```
+
+### Phase 17: Runtime Completion & Production Readiness
+
+**Overview**: Production-grade async execution, resilience mechanisms, and telemetry for full autonomous operations.
+
+**Components**:
+- `ExecutionLoop` & `AgentRuntime`: Async ticks handling objective execution
+- `CheckpointManager`: State saving and resumption
+- `AutonomyRecovery`: Mitigates and recovers from agentic failures
+- `RuntimeMetrics`: Telemetry for execution insights
+
+### Phase 16: Meta-Cognitive Governance & Self-Evolving Decision Systems
+
+**Overview**: Allows ModelX to observe its own failures, form theories on its performance, and evolve its decision-making strategies dynamically.
+
+**Components**:
+- `ExecutiveReviewBoard`: Analyzes systemic failures and implements governance changes
+- `DecisionAuditor` & `AssumptionDetector`: Tracks decision premises and audits assumptions
+- `StrategyMutator`: Mutates execution strategies based on performance outcomes
+
+### Phase 15: Decision Intelligence & Strategic Agency
+
+**Overview**: Introduces strategic decision-making with multi-agent consensus and structured risk analysis.
+
+**Components**:
+- `DecisionMarketplace`: Specialized agents bid and vote on complex decisions
+- `RiskEngine`: Calculates risks for potential actions
+
+### Phase 14: Epistemic & Knowledge Evolution
+
+**Overview**: Gives agents the ability to dynamically form, compress, and test new theories, storing complex mental models.
+
+**Components**:
+- `ConceptGraphEngine`: Relational maps of discovered concepts
+- `TheoryFormationEngine`: Proposes models based on data
+- `ScientificDiscoveryLoop`: Proposes hypotheses and designs experiments to validate them
 
 ### Phase 7: Multi-Modal Context
 
