@@ -22,9 +22,17 @@ def upgrade() -> None:
     # Create objective_status enum
     objective_status_enum = postgresql.ENUM(
         'active', 'completed', 'blocked', 'failed', 'paused', 'cancelled',
-        name='objective_status', create_type=True
+        name='objective_status', create_type=False
     )
-    objective_status_enum.create(op.get_bind())
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'objective_status') THEN
+                CREATE TYPE objective_status AS ENUM ('active', 'completed', 'blocked', 'failed', 'paused', 'cancelled');
+            END IF;
+        END
+        $$;
+    """)
 
     # Create objectives table
     op.create_table(
@@ -33,7 +41,7 @@ def upgrade() -> None:
         sa.Column('objective_id', sa.String(length=255), nullable=False),
         sa.Column('description', sa.Text(), nullable=False),
         sa.Column('priority', sa.Float(), nullable=False, server_default='0.5'),
-        sa.Column('status', objective_status_enum, nullable=False, server_default='active'),
+        sa.Column('status', objective_status_enum, nullable=False, server_default=sa.text("'active'")),
         sa.Column('metadata', postgresql.JSONB(), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -95,4 +103,4 @@ def downgrade() -> None:
     op.drop_index('ix_objectives_status', table_name='objectives')
     op.drop_table('objectives')
 
-    postgresql.ENUM(name='objective_status').drop(op.get_bind())
+    op.execute("DROP TYPE IF EXISTS objective_status")
