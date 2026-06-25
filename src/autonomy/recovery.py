@@ -163,9 +163,9 @@ class CheckpointRecovery:
     async def create_recovery_checkpoint(
         self,
         objective_id: str,
+        session: AsyncSession,
         state_snapshot: dict[str, Any],
         progress_snapshot: dict[str, Any] | None = None,
-        session: AsyncSession,
     ) -> None:
         """Create a checkpoint specifically for recovery purposes."""
         checkpoint_name = f"recovery_{datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f')}"
@@ -175,6 +175,7 @@ class CheckpointRecovery:
             state_snapshot=state_snapshot,
             progress_snapshot=progress_snapshot,
             metadata={"type": "recovery", "auto": True},
+            session=session,
         )
     
     async def restore_from_latest_checkpoint(
