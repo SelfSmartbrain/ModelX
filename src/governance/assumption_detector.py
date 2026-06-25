@@ -18,6 +18,7 @@ import re
 from typing import Dict, List, Optional, Any, Set
 from enum import Enum
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from src.config.logging import get_logger
 
@@ -293,3 +294,149 @@ class AssumptionDetector:
             return "Create proof-of-concept and technical validation"
         else:
             return "Monitor assumption validity and have contingency plans"
+    
+    async def test_assumption(
+        self,
+        assumption: Assumption,
+        test_context: Optional[Dict[str, Any]] = None,
+    ) -> Assumption:
+        """Test an assumption and update its test_result field.
+        
+        This is a minimal implementation that performs basic validation.
+        For production, this should integrate with actual testing infrastructure.
+        """
+        test_context = test_context or {}
+        
+        if not assumption.testable:
+            logger.warning(f"Assumption {assumption.id} is not testable")
+            assumption.tested = True
+            assumption.test_result = None
+            return assumption
+        
+        # Perform basic validation based on assumption type
+        test_passed = False
+        
+        if assumption.assumption_type == AssumptionType.RESOURCE:
+            # Check if resource is available in context
+            available_resources = test_context.get("available_resources", {})
+            if available_resources:
+                test_passed = True  # Simplified: assume resources exist if context provided
+        
+        elif assumption.assumption_type == AssumptionType.TIME:
+            # Check if time constraints are reasonable
+            time_horizon = test_context.get("time_horizon")
+            if time_horizon and time_horizon in ["short", "medium", "long"]:
+                test_passed = True
+        
+        elif assumption.assumption_type == AssumptionType.DEPENDENCY:
+            # Check if dependencies are available
+            dependencies = test_context.get("dependencies", [])
+            if dependencies:
+                test_passed = True
+        
+        elif assumption.assumption_type == AssumptionType.TECHNICAL:
+            # Check if technical feasibility can be validated
+            technical_validation = test_context.get("technical_validation")
+            if technical_validation is not None:
+                test_passed = technical_validation
+        
+        else:
+            # For other types, use a simple heuristic
+            test_passed = assumption.confidence > 0.5
+        
+        # Update assumption with test result
+        assumption.tested = True
+        assumption.test_result = test_passed
+        
+        logger.info(
+            f"Tested assumption {assumption.id}: "
+            f"{'PASSED' if test_passed else 'FAILED'}"
+        )
+        
+        return assumption
+    
+    async def test_assumptions_batch(
+        self,
+        assumptions: List[Assumption],
+        test_context: Optional[Dict[str, Any]] = None,
+    ) -> List[Assumption]:
+        """Test multiple assumptions in batch."""
+        test_context = test_context or {}
+        
+        tested_assumptions = []
+        for assumption in assumptions:
+            tested = await self.test_assumption(assumption, test_context)
+            tested_assumptions.append(tested)
+        
+        logger.info(f"Tested {len(tested_assumptions)} assumptions in batch")
+        
+        return tested_assumptions
+    
+    async def invalidate_assumption(
+        self,
+        assumption: Assumption,
+        reason: str,
+    ) -> Assumption:
+        """Mark an assumption as invalidated with a reason."""
+        assumption.tested = True
+        assumption.test_result = False
+        assumption.metadata["invalidated"] = True
+        assumption.metadata["invalidation_reason"] = reason
+        assumption.metadata["invalidated_at"] = datetime.utcnow().isoformat()
+        
+        logger.warning(
+            f"Invalidated assumption {assumption.id}: {reason}"
+        )
+        
+        return assumption
+    
+    async def retest_invalidated_assumptions(
+        self,
+        assumptions: List[Assumption],
+        test_context: Optional[Dict[str, Any]] = None,
+    ) -> List[Assumption]:
+        """Re-test assumptions that were previously invalidated."""
+        test_context = test_context or {}
+        
+        invalidated = [
+            a for a in assumptions
+            if a.metadata.get("invalidated", False)
+        ]
+        
+        if not invalidated:
+            logger.info("No invalidated assumptions to re-test")
+            return assumptions
+        
+        logger.info(f"Re-testing {len(invalidated)} invalidated assumptions")
+        
+        retested = []
+        for assumption in invalidated:
+            # Clear invalidation status
+            assumption.metadata["invalidated"] = False
+            assumption.metadata["invalidation_reason"] = None
+            assumption.metadata["invalidated_at"] = None
+            
+            # Re-test
+            retested_assumption = await self.test_assumption(assumption, test_context)
+            retested.append(retested_assumption)
+        
+        return retested
+    
+    def get_assumption_test_summary(self, assumptions: List[Assumption]) -> Dict[str, Any]:
+        """Get a summary of assumption testing results."""
+        total = len(assumptions)
+        tested = sum(1 for a in assumptions if a.tested)
+        passed = sum(1 for a in assumptions if a.test_result is True)
+        failed = sum(1 for a in assumptions if a.test_result is False)
+        invalidated = sum(1 for a in assumptions if a.metadata.get("invalidated", False))
+        
+        return {
+            "total_assumptions": total,
+            "tested": tested,
+            "untested": total - tested,
+            "passed": passed,
+            "failed": failed,
+            "invalidated": invalidated,
+            "test_rate": tested / total if total > 0 else 0.0,
+            "pass_rate": passed / tested if tested > 0 else 0.0,
+        }
