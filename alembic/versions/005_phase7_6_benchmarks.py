@@ -24,7 +24,7 @@ def upgrade() -> None:
     # benchmark_runs
     op.create_table(
         'benchmark_runs',
-        sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v7()'), nullable=False),
+        sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
         sa.Column('name', sa.String(), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
         sa.Column('status', sa.String(), nullable=False),
@@ -39,7 +39,7 @@ def upgrade() -> None:
     # benchmark_metrics
     op.create_table(
         'benchmark_metrics',
-        sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v7()'), nullable=False),
+        sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
         sa.Column('run_id', sa.UUID(), nullable=False),
         sa.Column('metric_name', sa.String(), nullable=False),
         sa.Column('metric_value', sa.Float(), nullable=False),
@@ -53,7 +53,7 @@ def upgrade() -> None:
     # validation_results
     op.create_table(
         'validation_results',
-        sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v7()'), nullable=False),
+        sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
         sa.Column('target_type', sa.String(), nullable=False),
         sa.Column('target_id', sa.UUID(), nullable=False),
         sa.Column('is_valid', sa.Boolean(), nullable=False),
@@ -66,7 +66,7 @@ def upgrade() -> None:
     # strategy_comparisons
     op.create_table(
         'strategy_comparisons',
-        sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v7()'), nullable=False),
+        sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
         sa.Column('baseline_strategy_id', sa.UUID(), nullable=False),
         sa.Column('candidate_strategy_id', sa.UUID(), nullable=False),
         sa.Column('comparison_results', postgresql.JSONB(), nullable=False),
@@ -78,7 +78,7 @@ def upgrade() -> None:
     # skill_validations
     op.create_table(
         'skill_validations',
-        sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v7()'), nullable=False),
+        sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
         sa.Column('skill_id', sa.UUID(), nullable=False),
         sa.Column('validation_score', sa.Float(), nullable=False),
         sa.Column('test_cases_passed', sa.Integer(), nullable=False),
@@ -91,7 +91,7 @@ def upgrade() -> None:
     # graph_evolution_snapshots
     op.create_table(
         'graph_evolution_snapshots',
-        sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v7()'), nullable=False),
+        sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
         sa.Column('graph_id', sa.UUID(), nullable=False),
         sa.Column('node_count', sa.Integer(), nullable=False),
         sa.Column('edge_count', sa.Integer(), nullable=False),
@@ -104,7 +104,7 @@ def upgrade() -> None:
     # system_health_snapshots
     op.create_table(
         'system_health_snapshots',
-        sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v7()'), nullable=False),
+        sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
         sa.Column('cpu_usage', sa.Float(), nullable=False),
         sa.Column('memory_usage', sa.Float(), nullable=False),
         sa.Column('active_tasks', sa.Integer(), nullable=False),
