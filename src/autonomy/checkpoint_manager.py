@@ -25,6 +25,7 @@ class CheckpointManager:
         state_snapshot: dict[str, Any],
         progress_snapshot: dict[str, Any] | None = None,
         metadata: dict[str, Any] | None = None,
+        session: AsyncSession | None = None,
     ) -> ObjectiveCheckpointModel:
         """Create a checkpoint for an objective."""
         checkpoint = ObjectiveCheckpointModel(
@@ -34,10 +35,11 @@ class CheckpointManager:
             progress_snapshot=progress_snapshot,
             metadata_=metadata,
         )
-        if self.session:
-            self.session.add(checkpoint)
-            await self.session.flush()
-            await self.session.commit()
+        db_session = session or self.session
+        if db_session:
+            db_session.add(checkpoint)
+            await db_session.flush()
+            await db_session.commit()
         return checkpoint
 
     async def get_latest_checkpoint(
@@ -102,8 +104,8 @@ class CheckpointManager:
     async def delete_old_checkpoints(
         self,
         objective_id: UUID,
-        keep_count: int = 5,
         session: AsyncSession,
+        keep_count: int = 5,
     ) -> int:
         """Delete old checkpoints, keeping only the most recent N."""
         checkpoints = await self.list_checkpoints(objective_id, session)
@@ -129,8 +131,8 @@ class RuntimeRecovery:
     async def restore_runtime_state(
         self,
         objective_id: UUID,
-        checkpoint_name: str | None = None,
         session: AsyncSession,
+        checkpoint_name: str | None = None,
     ) -> dict[str, Any] | None:
         """Restore runtime state from a checkpoint."""
         if checkpoint_name:
@@ -155,9 +157,9 @@ class RuntimeRecovery:
     async def auto_checkpoint_before_critical(
         self,
         objective_id: UUID,
+        session: AsyncSession,
         state_snapshot: dict[str, Any],
         progress_snapshot: dict[str, Any] | None = None,
-        session: AsyncSession,
     ) -> ObjectiveCheckpointModel:
         """Create an automatic checkpoint before critical operations."""
         checkpoint_name = f"auto_critical_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
@@ -167,14 +169,15 @@ class RuntimeRecovery:
             state_snapshot=state_snapshot,
             progress_snapshot=progress_snapshot,
             metadata={"auto": True, "type": "pre_critical"},
+            session=session,
         )
 
     async def auto_checkpoint_on_progress(
         self,
         objective_id: UUID,
+        session: AsyncSession,
         state_snapshot: dict[str, Any],
         progress_snapshot: dict[str, Any] | None = None,
-        session: AsyncSession,
     ) -> ObjectiveCheckpointModel:
         """Create an automatic checkpoint on significant progress."""
         checkpoint_name = f"auto_progress_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
@@ -184,4 +187,5 @@ class RuntimeRecovery:
             state_snapshot=state_snapshot,
             progress_snapshot=progress_snapshot,
             metadata={"auto": True, "type": "progress"},
+            session=session,
         )
