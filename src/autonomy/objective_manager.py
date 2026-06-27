@@ -1,4 +1,4 @@
-"""Objective management for autonomous runtime loops."""
+"""Objective management for runtime loops."""
 
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ class Objective:
 
 
 class ObjectiveManager:
-    """Keeps track of active and historical autonomous objectives with persistence."""
+    """Keeps track of active and historical objectives with persistence."""
 
     def __init__(self, session: AsyncSession | None = None) -> None:
         self.active_objectives: list[Objective] = []
@@ -241,25 +241,29 @@ class ObjectiveManager:
                 return moved
         return None
 
-    async def generate_next_objective(
+    async def suggest_followup_template(
         self,
         session: AsyncSession | None = None,
         context: dict[str, Any] | None = None,
     ) -> Objective | None:
-        """Generate the next objective autonomously based on completed objectives and context.
+        """Suggest a follow-up objective using templated patterns.
         
-        This is a minimal implementation that generates follow-up objectives based on:
+        This is a templated suggestion system, not autonomous LLM-based generation.
+        It generates follow-up objectives based on:
         - Completed objectives in the same domain
         - System context (available resources, time constraints, etc.)
         - Priority heuristics
+        - Predefined pattern templates
         
-        For production, this should be replaced with LLM-based objective generation.
+        The method name explicitly indicates this is a template-based suggestion,
+        not autonomous reasoning. For true autonomous generation, an LLM-based
+        implementation would be required.
         """
         context = context or {}
         
-        # If we have no completed objectives, cannot generate autonomous follow-up
+        # A template suggestion needs a completed objective to build on.
         if not self.completed_objectives:
-            logger.info("No completed objectives to base autonomous generation on")
+            logger.info("No completed objectives available for a follow-up suggestion")
             return None
         
         # Get the most recently completed objective
@@ -287,9 +291,9 @@ class ObjectiveManager:
         
         # Create metadata tracking the source
         new_metadata = {
-            "autonomous": True,
+            "autonomous": False,  # This is templated, not autonomous
             "source_objective_id": last_completed.objective_id,
-            "generation_method": "pattern_based",
+            "generation_method": "template_based",
             "generated_at": datetime.utcnow().isoformat(),
         }
         
@@ -299,7 +303,7 @@ class ObjectiveManager:
             metadata=new_metadata,
         )
         
-        logger.info(f"Generated autonomous objective: {new_description} (priority={new_priority})")
+        logger.info(f"Suggested template-based objective: {new_description} (priority={new_priority})")
         
         # Add to active objectives and persist if session available
         new_objective.status = "active"
@@ -311,13 +315,16 @@ class ObjectiveManager:
         
         return new_objective
 
-    async def should_generate_autonomous_objective(self, context: dict[str, Any] | None = None) -> bool:
-        """Determine whether to generate an autonomous objective.
+    async def should_suggest_followup_template(
+        self,
+        context: dict[str, Any] | None = None,
+    ) -> bool:
+        """Determine whether a templated follow-up should be suggested.
         
         Returns True if:
         - There are completed objectives to build on
         - There are no active objectives (idle state)
-        - Context indicates autonomous generation is appropriate
+        - Context allows a follow-up suggestion
         """
         context = context or {}
         
@@ -330,10 +337,10 @@ class ObjectiveManager:
             return False
         
         # Check context override
-        if context.get("force_autonomous_generation") is True:
+        if context.get("force_followup_suggestion") is True:
             return True
         
-        if context.get("disable_autonomous_generation") is True:
+        if context.get("disable_followup_suggestion") is True:
             return False
         
         # Default: generate when idle with history
