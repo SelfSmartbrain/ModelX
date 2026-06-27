@@ -132,6 +132,8 @@ class SelfPatchSafetyGate:
     CRITICAL_PATHS = [
         "src/runtime/",
         "src/autonomy/",
+        "src/agents/",
+        "src/agents/orchestrator.py",
         "src/api/auth.py",
         "src/api/dependencies.py",
         "src/api/middleware.py",
