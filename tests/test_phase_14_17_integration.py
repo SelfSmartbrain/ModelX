@@ -94,12 +94,12 @@ class TestExecutionLoopCheckpointing:
             assert checkpoint_manager.create_checkpoint.call_count >= 1
 
 
-class TestObjectiveManagerAutonomousGeneration:
-    """Tests for ObjectiveManager autonomous objective generation."""
+class TestObjectiveManagerTemplateSuggestion:
+    """Tests for ObjectiveManager template-based follow-up suggestions."""
     
     @pytest.mark.asyncio
-    async def test_generate_next_objective_from_completed(self, objective_manager):
-        """Test autonomous objective generation from completed objectives."""
+    async def test_suggest_followup_template_from_completed(self, objective_manager):
+        """Test a follow-up template suggestion from a completed objective."""
         # Setup: add a completed objective
         completed = Objective(
             description="Implement feature X",
@@ -112,11 +112,16 @@ class TestObjectiveManagerAutonomousGeneration:
         session = Mock()
         session.commit = AsyncMock()
         session.flush = AsyncMock()
+        objective_manager.save_objective = AsyncMock()
         
-        next_obj = await objective_manager.generate_next_objective(session)
+        next_obj = await objective_manager.suggest_followup_template(
+            session,
+            context={"follow_up_pattern": 0},
+        )
         
         assert next_obj is not None
-        assert next_obj.metadata.get("autonomous") is True
+        assert next_obj.metadata.get("autonomous") is False  # Template-based, not autonomous
+        assert next_obj.metadata.get("generation_method") == "template_based"
         assert "Implement feature X" in next_obj.description or "feature X" in next_obj.description.lower()
         assert next_obj.status == "active"
         assert next_obj in objective_manager.active_objectives
@@ -127,7 +132,7 @@ class TestObjectiveManagerAutonomousGeneration:
         objective_manager.completed_objectives = []
         
         session = Mock()
-        next_obj = await objective_manager.generate_next_objective(session)
+        next_obj = await objective_manager.suggest_followup_template(session)
         
         assert next_obj is None
     
@@ -139,7 +144,7 @@ class TestObjectiveManagerAutonomousGeneration:
             Objective(description="Test", status="completed"),
         ]
         
-        should_generate = await objective_manager.should_generate_autonomous_objective()
+        should_generate = await objective_manager.should_suggest_followup_template()
         assert should_generate is True
     
     @pytest.mark.asyncio
@@ -152,7 +157,7 @@ class TestObjectiveManagerAutonomousGeneration:
             Objective(description="Test", status="completed"),
         ]
         
-        should_generate = await objective_manager.should_generate_autonomous_objective()
+        should_generate = await objective_manager.should_suggest_followup_template()
         assert should_generate is False
     
     @pytest.mark.asyncio
@@ -164,14 +169,14 @@ class TestObjectiveManagerAutonomousGeneration:
         ]
         
         # Force generation
-        should_generate = await objective_manager.should_generate_autonomous_objective(
-            context={"force_autonomous_generation": True}
+        should_generate = await objective_manager.should_suggest_followup_template(
+            context={"force_followup_suggestion": True}
         )
         assert should_generate is True
         
         # Disable generation
-        should_generate = await objective_manager.should_generate_autonomous_objective(
-            context={"disable_autonomous_generation": True}
+        should_generate = await objective_manager.should_suggest_followup_template(
+            context={"disable_followup_suggestion": True}
         )
         assert should_generate is False
 
@@ -315,7 +320,7 @@ class TestAssumptionDetectorTesting:
             testable=True,
         )
         
-        tested = await detector.test_assumption({})  # No context
+        tested = await detector.test_assumption(assumption)  # No context
         
         assert tested.tested is True
         assert tested.test_result is False  # Should fail without context
