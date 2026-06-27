@@ -90,6 +90,7 @@ dependencies = [
 
 [project.scripts]
 modelx = "src.cli.main:cli"
+modelx-execution-harness = "src.cli.execution_loop_harness:cli"
 
 [project.optional-dependencies]
 dev = [
