@@ -20,6 +20,9 @@ from enum import Enum
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from sqlalchemy import func, select, table
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.config.logging import get_logger
 
 logger = get_logger(__name__)
@@ -56,6 +59,7 @@ class Assumption:
     testable: bool = True
     tested: bool = False
     test_result: Optional[bool] = None
+    verification_method: Optional[str] = None  # "database", "context_fallback", "heuristic", etc.
     impact_if_wrong: str = "medium"
     mitigation_strategy: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -71,6 +75,7 @@ class Assumption:
             "testable": self.testable,
             "tested": self.tested,
             "test_result": self.test_result,
+            "verification_method": self.verification_method,
             "impact_if_wrong": self.impact_if_wrong,
             "mitigation_strategy": self.mitigation_strategy,
             "metadata": self.metadata,
@@ -79,6 +84,17 @@ class Assumption:
 
 class AssumptionDetector:
     """Detects hidden assumptions in strategies and decisions."""
+
+    _ROW_COUNT_PATTERN = re.compile(
+        r"(?P<table>[A-Za-z_][A-Za-z0-9_]*)\s+has\s+"
+        r"(?:(?P<lt>fewer|less)\s+than|"
+        r"(?P<gt>more|greater)\s+than|"
+        r"(?P<ge>at\s+least)|"
+        r"(?P<le>at\s+most)|"
+        r"(?P<eq>exactly))\s+"
+        r"(?P<count>\d+)\s+rows?",
+        re.IGNORECASE,
+    )
     
     def __init__(self):
         self.assumption_patterns = {
@@ -299,11 +315,13 @@ class AssumptionDetector:
         self,
         assumption: Assumption,
         test_context: Optional[Dict[str, Any]] = None,
+        db_session: Optional[AsyncSession] = None,
     ) -> Assumption:
         """Test an assumption and update its test_result field.
         
-        This is a minimal implementation that performs basic validation.
-        For production, this should integrate with actual testing infrastructure.
+        This implementation performs real state verification for database row-count claims.
+        For RESOURCE assumptions about database tables, it queries the actual database
+        to verify the claim against ground truth.
         """
         test_context = test_context or {}
         
@@ -311,49 +329,138 @@ class AssumptionDetector:
             logger.warning(f"Assumption {assumption.id} is not testable")
             assumption.tested = True
             assumption.test_result = None
+            assumption.verification_method = None
             return assumption
         
-        # Perform basic validation based on assumption type
         test_passed = False
         
         if assumption.assumption_type == AssumptionType.RESOURCE:
-            # Check if resource is available in context
-            available_resources = test_context.get("available_resources", {})
-            if available_resources:
-                test_passed = True  # Simplified: assume resources exist if context provided
-        
+            claim = self._parse_row_count_claim(assumption.description)
+            if claim:
+                table_name, comparison, claimed_count = claim
+                actual_count = None
+
+                if db_session:
+                    row_count_query = select(func.count()).select_from(table(table_name))
+                    try:
+                        result = await db_session.execute(row_count_query)
+                        actual_count = result.scalar()
+                        assumption.verification_method = "database"
+                    except Exception as exc:
+                        assumption.metadata["verification_error"] = (
+                            f"{type(exc).__name__}: {exc}"
+                        )
+                        logger.warning(
+                            "Database verification failed for assumption %s: %s",
+                            assumption.id,
+                            exc,
+                        )
+
+                if actual_count is None:
+                    actual_count = test_context.get("available_resources", {}).get(table_name)
+                    assumption.verification_method = "context_fallback"
+
+                if isinstance(actual_count, (int, float)) and not isinstance(actual_count, bool):
+                    test_passed = self._compare_row_count(
+                        actual_count,
+                        comparison,
+                        claimed_count,
+                    )
+
+                assumption.metadata["verification_details"] = {
+                    "table": table_name,
+                    "comparison": comparison,
+                    "expected_count": claimed_count,
+                    "actual_count": actual_count,
+                }
+                logger.info(
+                    "Row-count check via %s: %s has %s rows, expected %s %s",
+                    assumption.verification_method,
+                    table_name,
+                    actual_count,
+                    comparison,
+                    claimed_count,
+                )
+            else:
+                available_resources = test_context.get("available_resources", {})
+                test_passed = bool(available_resources)
+                assumption.verification_method = "context_check"
+
         elif assumption.assumption_type == AssumptionType.TIME:
             # Check if time constraints are reasonable
             time_horizon = test_context.get("time_horizon")
             if time_horizon and time_horizon in ["short", "medium", "long"]:
                 test_passed = True
-        
+            assumption.verification_method = "context_check"
+
         elif assumption.assumption_type == AssumptionType.DEPENDENCY:
             # Check if dependencies are available
             dependencies = test_context.get("dependencies", [])
             if dependencies:
                 test_passed = True
-        
+            assumption.verification_method = "context_check"
+
         elif assumption.assumption_type == AssumptionType.TECHNICAL:
             # Check if technical feasibility can be validated
             technical_validation = test_context.get("technical_validation")
             if technical_validation is not None:
                 test_passed = technical_validation
-        
+            assumption.verification_method = "context_check"
+
         else:
             # For other types, use a simple heuristic
             test_passed = assumption.confidence > 0.5
-        
+            assumption.verification_method = "heuristic"
+
         # Update assumption with test result
         assumption.tested = True
         assumption.test_result = test_passed
-        
+
         logger.info(
             f"Tested assumption {assumption.id}: "
             f"{'PASSED' if test_passed else 'FAILED'}"
         )
-        
+
         return assumption
+
+    def _parse_row_count_claim(
+        self,
+        description: str,
+    ) -> tuple[str, str, int] | None:
+        """Parse a supported database row-count claim."""
+        match = self._ROW_COUNT_PATTERN.search(description)
+        if not match:
+            return None
+
+        if match.group("lt"):
+            comparison = "less_than"
+        elif match.group("gt"):
+            comparison = "greater_than"
+        elif match.group("ge"):
+            comparison = "at_least"
+        elif match.group("le"):
+            comparison = "at_most"
+        else:
+            comparison = "exactly"
+
+        return match.group("table"), comparison, int(match.group("count"))
+
+    @staticmethod
+    def _compare_row_count(
+        actual_count: int | float,
+        comparison: str,
+        expected_count: int,
+    ) -> bool:
+        """Evaluate a parsed row-count comparison."""
+        if comparison == "less_than":
+            return actual_count < expected_count
+        if comparison == "greater_than":
+            return actual_count > expected_count
+        if comparison == "at_least":
+            return actual_count >= expected_count
+        if comparison == "at_most":
+            return actual_count <= expected_count
+        return actual_count == expected_count
     
     async def test_assumptions_batch(
         self,
