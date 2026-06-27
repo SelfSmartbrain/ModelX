@@ -160,9 +160,9 @@ class AutonomyRecovery:
                 RecoveryStrategy.REQUEST_HUMAN_INTERVENTION,
             ],
             FailureType.INVALID_TOOL_INPUT: [
-                RecoveryStrategy.RETRY_WITH_BACKOFF,
                 RecoveryStrategy.REDUCE_COMPLEXITY,
                 RecoveryStrategy.REQUEST_HUMAN_INTERVENTION,
+                RecoveryStrategy.SKIP_AND_CONTINUE,
             ],
             FailureType.LLM_ERROR: [
                 RecoveryStrategy.RETRY_WITH_BACKOFF,
@@ -283,18 +283,31 @@ class AutonomyRecovery:
             [RecoveryStrategy.REQUEST_HUMAN_INTERVENTION],
         )
         
-        # Select strategy based on retry count
         retry_count = failure_context.retry_count
-        
-        if retry_count >= len(strategies):
-            # Exhausted all strategies, escalate
-            return RecoveryAction(
-                strategy=RecoveryStrategy.ESCALATE,
-                description="All recovery strategies exhausted, escalating to human oversight",
-                requires_human_approval=True,
-            )
-        
-        strategy = strategies[retry_count]
+        retry_strategies = {
+            RecoveryStrategy.RETRY_IMMEDIATE,
+            RecoveryStrategy.RETRY_WITH_BACKOFF,
+        }
+        primary_strategy = strategies[0]
+
+        if primary_strategy in retry_strategies and retry_count <= self.max_retries:
+            strategy = primary_strategy
+        else:
+            non_retry_strategies = [
+                candidate for candidate in strategies if candidate not in retry_strategies
+            ]
+            if primary_strategy in retry_strategies:
+                strategy_index = retry_count - self.max_retries - 1
+            else:
+                strategy_index = retry_count
+
+            if strategy_index >= len(non_retry_strategies):
+                return RecoveryAction(
+                    strategy=RecoveryStrategy.ESCALATE,
+                    description="All recovery strategies exhausted, escalating to human oversight",
+                    requires_human_approval=True,
+                )
+            strategy = non_retry_strategies[strategy_index]
         
         # Build recovery action based on strategy
         if strategy == RecoveryStrategy.RETRY_WITH_BACKOFF:
@@ -437,6 +450,10 @@ class AutonomyRecovery:
         """Handle a failure end-to-end: classify, determine action, execute recovery."""
         
         context = context or {}
+        retry_count = context.get("retry_count")
+        if retry_count is None:
+            attempt = context.get("attempt")
+            retry_count = max(int(attempt) - 1, 0) if attempt is not None else 0
         
         # Classify failure
         failure_type = self.classify_failure(error_message, exception_type, context)
@@ -449,7 +466,7 @@ class AutonomyRecovery:
             objective_id=context.get("objective_id"),
             task_id=context.get("task_id"),
             tool_name=context.get("tool_name"),
-            retry_count=context.get("retry_count", 0),
+            retry_count=retry_count,
             metadata=context,
         )
         
