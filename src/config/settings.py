@@ -335,10 +335,16 @@ class Settings(BaseSettings):
     host: str = Field(default="0.0.0.0")
     port: int = Field(default=8000)
     debug: bool = Field(default=False)
-    cors_origins: list[str] = Field(
-        default=["http://localhost:3000", "http://localhost:8000"],
-        description="Allowed CORS origins",
+    cors_origins: str = Field(
+        default="http://localhost:3000,http://localhost:8000",
+        description="Allowed CORS origins (comma-separated)",
     )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parse CORS origins from comma-separated string."""
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     @field_validator("anthropic_base_url")
     @classmethod
@@ -355,6 +361,34 @@ class Settings(BaseSettings):
             return "https://openrouter.ai/api"
 
         return normalized
+
+    @field_validator("anthropic_api_key", "openai_api_key")
+    @classmethod
+    def validate_required_api_keys(cls, value: SecretStr | str | None) -> SecretStr | str | None:
+        """Validate that required API keys are not using default placeholder values."""
+        if value is None:
+            return None
+        
+        secret_value = value.get_secret_value() if isinstance(value, SecretStr) else str(value)
+        
+        # Check for common placeholder values
+        placeholder_patterns = [
+            "your_key_here",
+            "your_api_key",
+            "placeholder",
+            "change_me",
+            "xxx",
+        ]
+        
+        secret_lower = secret_value.lower()
+        for pattern in placeholder_patterns:
+            if pattern in secret_lower:
+                raise ValueError(
+                    f"API key contains placeholder value '{pattern}'. "
+                    "Please configure a valid API key in your environment."
+                )
+        
+        return value
 
 
 @lru_cache(maxsize=1)
