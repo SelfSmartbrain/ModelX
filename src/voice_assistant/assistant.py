@@ -61,10 +61,10 @@ class VoiceAssistant:
         self.on_response: Optional[Callable[[str], Any]] = None
         self.on_state_change: Optional[Callable[[AssistantState], Any]] = None
 
-    def _set_state(self, state: AssistantState):
+    async def _set_state(self, state: AssistantState):
         self.state = state
         if self.on_state_change:
-            self.on_state_change(state)
+            await self.on_state_change(state)
         logger.info(f"State: {state.value}")
 
     async def process_audio_chunk(self, chunk: bytes):
@@ -81,12 +81,9 @@ class VoiceAssistant:
         if is_speech:
             self._silence_chunks = 0
             if self.state == AssistantState.IDLE:
-                self._set_state(AssistantState.LISTENING)
+                await self._set_state(AssistantState.LISTENING)
         else:
-            self._silence_chunks += 1
-
-        # Check for end of utterance
-        silence_chunks_needed = int(
+            self._silence_chunks_needed = int(
             self.config.silence_duration * self.config.sample_rate / self.config.chunk_size
         )
 
@@ -100,12 +97,15 @@ class VoiceAssistant:
     def _calculate_energy(self, chunk: bytes) -> float:
         """Calculate RMS energy of audio chunk"""
         import numpy as np
+        # Ensure chunk size is multiple of 2 bytes (int16)
+        if len(chunk) % 2 != 0:
+            chunk = chunk[:-1]
         audio = np.frombuffer(chunk, dtype=np.int16).astype(np.float32)
         return np.sqrt(np.mean(audio ** 2)) / 32768.0
 
     async def _process_utterance(self):
         """Process complete utterance"""
-        self._set_state(AssistantState.PROCESSING)
+        await self._set_state(AssistantState.PROCESSING)
 
         audio_data = bytes(self._audio_buffer)
         self._audio_buffer.clear()
@@ -114,7 +114,7 @@ class VoiceAssistant:
             # STT
             transcript = await self.stt.transcribe(audio_data)
             if not transcript or not transcript.strip():
-                self._set_state(AssistantState.IDLE)
+                await self._set_state(AssistantState.IDLE)
                 return
 
             logger.info(f"Transcript: {transcript}")
@@ -142,7 +142,7 @@ class VoiceAssistant:
         except Exception as e:
             logger.error(f"Processing error: {e}")
         finally:
-            self._set_state(AssistantState.IDLE)
+            await self._set_state(AssistantState.IDLE)
 
     async def _get_llm_response(self, user_input: str) -> str:
         """Get response from LLM with context"""
@@ -181,7 +181,7 @@ Assistant:"""
 
     async def _speak(self, text: str):
         """Synthesize and play speech"""
-        self._set_state(AssistantState.SPEAKING)
+        await self._set_state(AssistantState.SPEAKING)
         self._is_speaking = True
 
         try:
@@ -200,7 +200,7 @@ Assistant:"""
             logger.error(f"TTS error: {e}")
         finally:
             self._is_speaking = False
-            self._set_state(AssistantState.IDLE)
+            await self._set_state(AssistantState.IDLE)
 
     async def _play_audio(self, audio: bytes):
         """Play audio bytes (implement with sounddevice/pyaudio)"""
@@ -218,12 +218,12 @@ Assistant:"""
 
     async def start_listening(self):
         """Start the assistant (call after audio input is set up)"""
-        self._set_state(AssistantState.IDLE)
+        await self._set_state(AssistantState.IDLE)
         logger.info("Voice assistant started")
 
     async def stop(self):
         """Stop the assistant"""
-        self._set_state(AssistantState.IDLE)
+        await self._set_state(AssistantState.IDLE)
         self._audio_buffer.clear()
 
 
