@@ -86,6 +86,9 @@ dependencies = [
 
     # CLI
     "prompt_toolkit>=3.0.0",
+
+    # UUID
+    "uuid6>=2024.1.0",
 ]
 
 [project.scripts]
