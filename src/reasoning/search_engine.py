@@ -38,5 +38,8 @@ class SearchEngine:
         )
         for e in eps:
             results.append({"source": "episodic_memory", "outcome": e.outcome, "id": e.id})
-        # TODO: integrate semantic memory vector search
+        # Semantic memory vector search
+        semantic_results = self.semantic_mem.search(query, top_k=top_k)
+        for sr in semantic_results:
+            results.append({"source": "semantic_memory", "content": sr.content, "score": sr.score})
         return results
