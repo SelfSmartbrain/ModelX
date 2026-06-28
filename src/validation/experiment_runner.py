@@ -10,9 +10,10 @@ from typing import Dict, Any
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON, MetaData, Table
 from sqlalchemy.orm import sessionmaker
+from src.config.settings import get_settings
 
-# TODO: replace with your actual DB URL (read from env/config)
-DATABASE_URL = "postgresql://postgres:password@localhost:5432/modelx"
+settings = get_settings()
+DATABASE_URL = settings.database_url_sync
 engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 metadata = MetaData()
