@@ -7,17 +7,26 @@ The Planner is responsible for:
 - Scheduling plan execution
 - Monitoring plan progress
 - Adapting plans to changing conditions
+- Dynamic re-planning on environmental drift
 """
 
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
 
 logger = logging.getLogger(__name__)
+
+# Optional imports for drift detection (avoid circular imports)
+try:
+    from src.reasoning.drift_detector import EnvironmentalDriftDetector, DriftSignal
+    from src.reasoning.reactive_replanner import ReactiveRePlanner, ReplanContext, ReplanStrategy, ReplanningCoordinator
+    DRIFT_DETECTION_AVAILABLE = True
+except ImportError:
+    DRIFT_DETECTION_AVAILABLE = False
 
 
 class PlanStatus(Enum):
@@ -69,11 +78,14 @@ class Planner:
     - Managing dependencies between actions
     - Scheduling action execution
     - Monitoring progress and adapting
+    - Dynamic re-planning on environmental drift
     """
     
-    def __init__(self):
+    def __init__(self, llm_client: Any = None, memory_fabric: Any = None):
         self._plans: Dict[str, Plan] = {}
         self._active_plans: Set[str] = set()
+        self._llm = llm_client
+        self._memory = memory_fabric
         
         # Planning strategies
         self._strategies = {
@@ -82,14 +94,54 @@ class Planner:
             "backward": self._backward_planning,
         }
         
+        # Drift detection and re-planning
+        self._drift_detector: Optional[EnvironmentalDriftDetector] = None
+        self._replanner: Optional[ReactiveRePlanner] = None
+        self._replanning_coordinator: Optional[ReplanningCoordinator] = None
+        self._drift_monitoring_enabled = False
+        
         # Statistics
         self._plans_created = 0
         self._plans_completed = 0
         self._plans_failed = 0
+        self._replans_triggered = 0
     
-    async def initialize(self) -> None:
-        """Initialize the planner"""
+    async def initialize(self, enable_drift_detection: bool = True) -> None:
+        """Initialize the planner with optional drift detection"""
         logger.info("Planner initialized")
+        
+        if enable_drift_detection and DRIFT_DETECTION_AVAILABLE and self._llm:
+            await self._initialize_drift_detection()
+    
+    async def _initialize_drift_detection(self) -> None:
+        """Initialize drift detection and re-planning components"""
+        try:
+            self._drift_detector = EnvironmentalDriftDetector(
+                memory_fabric=self._memory,
+                llm_client=self._llm,
+                drift_threshold=0.3,
+                check_interval=30,
+            )
+            await self._drift_detector.initialize()
+            
+            self._replanner = ReactiveRePlanner(
+                planner=self,
+                llm_client=self._llm,
+                memory_fabric=self._memory,
+            )
+            await self._replanner.initialize()
+            
+            self._replanning_coordinator = ReplanningCoordinator(
+                drift_detector=self._drift_detector,
+                replanner=self._replanner,
+                planner=self,
+            )
+            
+            self._drift_monitoring_enabled = True
+            logger.info("Drift detection and re-planning enabled")
+        except Exception as e:
+            logger.warning(f"Failed to initialize drift detection: {e}")
+            self._drift_monitoring_enabled = False
     
     async def create_plan(
         self,
@@ -234,12 +286,16 @@ class Planner:
     async def execute_plan(
         self,
         plan_id: str,
+        get_state_func: Optional[Callable] = None,
+        get_context_func: Optional[Callable] = None,
     ) -> bool:
         """
-        Execute a plan.
+        Execute a plan with optional drift monitoring.
         
         Args:
             plan_id: Plan identifier
+            get_state_func: Function to get current execution state (for drift detection)
+            get_context_func: Function to get current context (for drift detection)
             
         Returns:
             True if plan completed successfully
@@ -253,11 +309,25 @@ class Planner:
         plan.started_at = datetime.now().timestamp()
         self._active_plans.add(plan_id)
         
+        # Start drift monitoring if enabled and functions provided
+        if self._drift_monitoring_enabled and get_state_func and get_context_func:
+            await self._start_drift_monitoring(plan_id, get_state_func, get_context_func)
+        
         try:
             # Execute actions in dependency order
             executed_actions = set()
             
             while len(executed_actions) < len(plan.actions):
+                # Check for drift before each action batch
+                if self._drift_monitoring_enabled:
+                    drift_result = await self._check_and_handle_drift(plan_id, len(executed_actions))
+                    if drift_result and drift_result.get("replanned"):
+                        # Plan was re-planned, refresh reference
+                        plan = self._plans.get(plan_id)
+                        if not plan:
+                            logger.error(f"Plan {plan_id} lost after re-plan")
+                            return False
+                
                 # Find actions whose dependencies are satisfied
                 ready_actions = [
                     action for action in plan.actions
@@ -289,6 +359,10 @@ class Planner:
             self._active_plans.discard(plan_id)
             self._plans_completed += 1
             
+            # Stop drift monitoring
+            if self._drift_monitoring_enabled:
+                await self._stop_drift_monitoring(plan_id)
+            
             logger.info(f"Plan {plan_id} completed successfully")
             return True
             
@@ -296,7 +370,76 @@ class Planner:
             logger.error(f"Error executing plan {plan_id}: {e}")
             plan.status = PlanStatus.FAILED
             self._plans_failed += 1
+            
+            if self._drift_monitoring_enabled:
+                await self._stop_drift_monitoring(plan_id)
+            
             return False
+    
+    async def _start_drift_monitoring(
+        self,
+        plan_id: str,
+        get_state_func: Callable,
+        get_context_func: Callable,
+    ) -> None:
+        """Start drift monitoring for a plan"""
+        # Extract expected states from plan
+        expected_states = []
+        for action in self._plans[plan_id].actions:
+            expected_states.append({
+                "action": action.action_id,
+                "description": action.description,
+                "expected_outcome": f"Completed: {action.description}",
+            })
+        
+        # Get baseline state
+        baseline_state = await get_state_func() if callable(get_state_func) else {}
+        
+        await self._drift_detector.register_plan(plan_id, expected_states, baseline_state)
+        await self._drift_detector.start_monitoring(plan_id, get_state_func, get_context_func)
+        
+        # Set up re-plan callback
+        async def on_replan(new_plan_id: str, result: Any):
+            self._replans_triggered += 1
+            logger.info(f"Plan {plan_id} re-planned to {new_plan_id}: {result.changes_summary}")
+        
+        await self._replanning_coordinator.start_monitoring_plan(
+            plan_id, get_state_func, get_context_func, on_replan
+        )
+    
+    async def _check_and_handle_drift(
+        self,
+        plan_id: str,
+        current_step: int,
+    ) -> Optional[Dict[str, Any]]:
+        """Check for drift and handle if detected"""
+        if not self._replanning_coordinator:
+            return None
+        
+        get_state_func = self._drift_detector._get_state_funcs.get(plan_id)
+        get_context_func = self._drift_detector._get_context_funcs.get(plan_id)
+        
+        if not get_state_func or not get_context_func:
+            return None
+        
+        current_state = await get_state_func() if callable(get_state_func) else {}
+        context = await get_context_func() if callable(get_context_func) else {}
+        context["goal"] = self._plans[plan_id].goal
+        context["completed_actions"] = [a.action_id for a in self._plans[plan_id].actions if a.action_id in current_state.get("executed", set())]
+        context["remaining_actions"] = [a for a in self._plans[plan_id].actions if a.action_id not in current_state.get("executed", set())]
+        
+        result = await self._replanning_coordinator.check_and_replan(plan_id, current_step, current_state, context)
+        
+        if result:
+            return {"replanned": True, "result": result}
+        return {"replanned": False}
+    
+    async def _stop_drift_monitoring(self, plan_id: str) -> None:
+        """Stop drift monitoring for a plan"""
+        if self._drift_detector:
+            await self._drift_detector.stop_monitoring(plan_id)
+        if self._replanning_coordinator:
+            await self._replanning_coordinator.stop_monitoring_plan(plan_id)
     
     async def _execute_action(self, action: Action) -> bool:
         """
@@ -354,7 +497,7 @@ class Planner:
     
     def get_metrics(self) -> Dict[str, Any]:
         """Get planner metrics"""
-        return {
+        metrics = {
             "plans_created": self._plans_created,
             "plans_completed": self._plans_completed,
             "plans_failed": self._plans_failed,
@@ -363,4 +506,14 @@ class Planner:
                 self._plans_completed / self._plans_created
                 if self._plans_created > 0 else 0.0
             ),
+            "replans_triggered": self._replans_triggered,
+            "drift_detection_enabled": self._drift_monitoring_enabled,
         }
+        
+        if self._drift_detector:
+            metrics["drift_signals_detected"] = len(self._drift_detector.get_drift_history())
+        
+        if self._replanner:
+            metrics["replan_history"] = len(self._replanner.get_replan_history())
+        
+        return metrics
