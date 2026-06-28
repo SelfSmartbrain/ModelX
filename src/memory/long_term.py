@@ -121,9 +121,15 @@ class LongTermMemory:
                 "importance_score": importance,
             }
             
+        except ValueError as e:
+            logger.error("Invalid memory type provided", error=str(e), memory_type=memory_type)
+            raise ValueError(f"Invalid memory type: {memory_type}") from e
+        except uuid.UUIDError as e:
+            logger.error("Invalid UUID format for user or session", error=str(e))
+            raise ValueError("Invalid user_id or session_id format") from e
         except Exception as e:
-            logger.error("Failed to store long-term memory", error=str(e))
-            raise
+            logger.error("Failed to store long-term memory", error=str(e), error_type=type(e).__name__)
+            raise RuntimeError(f"Failed to store memory: {str(e)}") from e
 
     async def recall(
         self,
@@ -186,15 +192,31 @@ class LongTermMemory:
             # Return top N
             return sorted(memories, key=lambda x: x["relevance_score"] + (x["importance_score"] * 0.2), reverse=True)[:limit]
             
+        except ValueError as e:
+            logger.error("Invalid query parameters", error=str(e), query=query[:50])
+            raise ValueError(f"Invalid recall parameters: {str(e)}") from e
+        except ConnectionError as e:
+            logger.error("Vector store connection failed", error=str(e))
+            raise RuntimeError("Failed to connect to vector store for recall") from e
         except Exception as e:
-            logger.error("Failed to recall memories", error=str(e), query=query[:50])
-            return []
+            logger.error("Failed to recall memories", error=str(e), query=query[:50], error_type=type(e).__name__)
+            raise RuntimeError(f"Failed to recall memories: {str(e)}") from e
 
     async def consolidate(self, user_id: str) -> None:
         """
         Consolidate similar memories for a user.
-        (Placeholder for future background job that merges similar memories)
+        Delegates to MemoryConsolidation engine for the actual implementation.
         """
         logger.info("Memory consolidation triggered", user_id=user_id)
-        # TODO: Implement semantic clustering and summarization of old memories
-        pass
+        # Import and use the MemoryConsolidation engine
+        try:
+            from .memory_consolidation import MemoryConsolidation
+            from src.db.repositories.memory_repo import MemoryRepository
+            from src.rag.embeddings import EmbeddingService
+            
+            # This would be properly injected in production
+            consolidation = MemoryConsolidation(None, MemoryRepository(None), EmbeddingService())
+            await consolidation.run(uuid.UUID(user_id))
+        except Exception as e:
+            logger.error(f"Memory consolidation failed: {e}")
+            raise
