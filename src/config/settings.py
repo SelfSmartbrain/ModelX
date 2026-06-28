@@ -284,6 +284,52 @@ class Settings(BaseSettings):
     )
 
     # -------------------------------------------------------------------------
+    # AGI Feature Flags
+    # -------------------------------------------------------------------------
+    agi_dynamic_replanning: bool = Field(
+        default=True,
+        description="Enable dynamic re-planning on environmental drift",
+    )
+    agi_hierarchical_delegation: bool = Field(
+        default=True,
+        description="Enable hierarchical multi-agent delegation",
+    )
+    agi_context_compression: bool = Field(
+        default=True,
+        description="Enable automatic context compression for long-horizon tasks",
+    )
+    agi_mcp_integration: bool = Field(
+        default=True,
+        description="Enable MCP (Model Context Protocol) tool integration",
+    )
+    agi_architecture_evolution: bool = Field(
+        default=False,
+        description="Enable self-modifying architecture evolution (requires human approval)",
+    )
+    agi_self_improvement: bool = Field(
+        default=True,
+        description="Enable continuous self-improvement loop",
+    )
+    agi_cognitive_bus: bool = Field(
+        default=True,
+        description="Enable unified cognitive event bus",
+    )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def agi_features(self) -> dict[str, bool]:
+        """Get all AGI feature flags as a dictionary"""
+        return {
+            "dynamic_replanning": self.agi_dynamic_replanning,
+            "hierarchical_delegation": self.agi_hierarchical_delegation,
+            "context_compression": self.agi_context_compression,
+            "mcp_integration": self.agi_mcp_integration,
+            "architecture_evolution": self.agi_architecture_evolution,
+            "self_improvement": self.agi_self_improvement,
+            "cognitive_bus": self.agi_cognitive_bus,
+        }
+
+    # -------------------------------------------------------------------------
     # Server
     # -------------------------------------------------------------------------
     host: str = Field(default="0.0.0.0")
