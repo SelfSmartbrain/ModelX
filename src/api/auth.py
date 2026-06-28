@@ -28,8 +28,9 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     settings = get_settings()
-    # Use a hardcoded fallback if JWT_SECRET isn't in settings
-    secret_key = getattr(settings, "JWT_SECRET", "super-secret-key-for-dev")
+    secret_key = settings.jwt_secret_key.get_secret_value()
+    if not secret_key or secret_key == "dev-secret-change-in-production":
+        raise ValueError("JWT_SECRET must be configured with a secure value in production")
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -45,12 +46,12 @@ async def get_current_user(
     api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
 ) -> User:
     settings = get_settings()
-    secret_key = getattr(settings, "JWT_SECRET", "super-secret-key-for-dev")
+    secret_key = settings.jwt_secret_key.get_secret_value()
+    if not secret_key or secret_key == "dev-secret-change-in-production":
+        raise ValueError("JWT_SECRET must be configured with a secure value")
     repo = UserRepository(db_session)
 
     if not token and not api_key:
-        if settings.environment == "development":
-            return User(id=uuid.UUID("00000000-0000-0000-0000-000000000000"), email="dev@example.com")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated.",
@@ -71,5 +72,16 @@ async def get_current_user(
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
         return User(id=user_db.id, email=user_db.email)
     
-    # API Key logic would go here if needed
-    return User(id=uuid.UUID("11111111-1111-1111-1111-111111111111"), email="api@example.com")
+    # API Key authentication
+    if api_key:
+        api_key_hash = get_password_hash(api_key)
+        user_db = await repo.get_by_api_key(api_key_hash)
+        if user_db is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+        return User(id=user_db.id, email=user_db.email)
+    
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Not authenticated.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
