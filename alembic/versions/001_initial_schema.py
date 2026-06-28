@@ -27,43 +27,43 @@ depends_on: Union[str, Sequence[str], None] = None
 session_status_enum = postgresql.ENUM(
     "pending", "active", "completed", "failed", "cancelled",
     name="session_status",
-    create_type=False,
+    create_type=True,
 )
 
 task_status_enum = postgresql.ENUM(
     "pending", "in_progress", "completed", "failed", "blocked", "cancelled",
     name="task_status",
-    create_type=False,
+    create_type=True,
 )
 
 execution_status_enum = postgresql.ENUM(
     "running", "completed", "failed", "timeout",
     name="execution_status",
-    create_type=False,
+    create_type=True,
 )
 
 memory_type_enum = postgresql.ENUM(
     "episodic", "semantic", "procedural",
     name="memory_type",
-    create_type=False,
+    create_type=True,
 )
 
 source_type_enum = postgresql.ENUM(
     "arxiv", "web", "wikipedia", "pdf", "manual",
     name="source_type",
-    create_type=False,
+    create_type=True,
 )
 
 reflection_type_enum = postgresql.ENUM(
     "task", "session", "strategy",
     name="reflection_type",
-    create_type=False,
+    create_type=True,
 )
 
 priority_enum = postgresql.ENUM(
     "low", "normal", "high", "critical",
     name="priority",
-    create_type=False,
+    create_type=True,
 )
 
 
@@ -72,14 +72,7 @@ def upgrade() -> None:
     # Create UUID extension for uuid_generate_v7()
     op.execute("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
     
-    # Create enum types first
-    op.execute("CREATE TYPE session_status AS ENUM ('pending', 'active', 'completed', 'failed', 'cancelled')")
-    op.execute("CREATE TYPE task_status AS ENUM ('pending', 'in_progress', 'completed', 'failed', 'blocked', 'cancelled')")
-    op.execute("CREATE TYPE execution_status AS ENUM ('running', 'completed', 'failed', 'timeout')")
-    op.execute("CREATE TYPE memory_type AS ENUM ('episodic', 'semantic', 'procedural')")
-    op.execute("CREATE TYPE source_type AS ENUM ('arxiv', 'web', 'wikipedia', 'pdf', 'manual')")
-    op.execute("CREATE TYPE reflection_type AS ENUM ('task', 'session', 'strategy')")
-    op.execute("CREATE TYPE priority AS ENUM ('low', 'normal', 'high', 'critical')")
+    # Enum types will be created automatically by SQLAlchemy when tables are created
 
     # ---- users ----
     op.create_table(
@@ -113,7 +106,7 @@ def upgrade() -> None:
         "tasks",
         sa.Column("id", sa.Uuid(), primary_key=True),
         sa.Column("session_id", sa.Uuid(), sa.ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("parent_task_id", sa.Uuid(), sa.ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True),
+        sa.Column("parent_task_id", sa.Uuid(), sa.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=True),
         sa.Column("title", sa.String(500), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("status", task_status_enum, nullable=False, server_default="pending"),
@@ -246,22 +239,25 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop all tables and enum types."""
-    # Drop tables in reverse dependency order
-    op.drop_table("reflection_records")
-    op.drop_table("agent_logs")
-    op.drop_table("knowledge_chunks")
-    op.drop_table("knowledge_documents")
-    op.drop_table("memories")
-    op.drop_table("executions")
-    op.drop_table("tasks")
-    op.drop_table("sessions")
-    op.drop_table("users")
+    try:
+        # Drop tables in reverse dependency order
+        op.drop_table("reflection_records")
+        op.drop_table("agent_logs")
+        op.drop_table("knowledge_chunks")
+        op.drop_table("knowledge_documents")
+        op.drop_table("memories")
+        op.drop_table("executions")
+        op.drop_table("tasks")
+        op.drop_table("sessions")
+        op.drop_table("users")
 
-    # Drop enum types
-    op.execute("DROP TYPE IF EXISTS reflection_type")
-    op.execute("DROP TYPE IF EXISTS source_type")
-    op.execute("DROP TYPE IF EXISTS memory_type")
-    op.execute("DROP TYPE IF EXISTS execution_status")
-    op.execute("DROP TYPE IF EXISTS priority")
-    op.execute("DROP TYPE IF EXISTS task_status")
-    op.execute("DROP TYPE IF EXISTS session_status")
+        # Drop enum types
+        priority_enum.drop(op)
+        reflection_type_enum.drop(op)
+        source_type_enum.drop(op)
+        memory_type_enum.drop(op)
+        execution_status_enum.drop(op)
+        task_status_enum.drop(op)
+        session_status_enum.drop(op)
+    except Exception as e:
+        raise Exception(f"Error during downgrade: {e}")
