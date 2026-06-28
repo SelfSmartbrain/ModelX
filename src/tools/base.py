@@ -14,7 +14,8 @@ from __future__ import annotations
 import asyncio
 import time
 from abc import abstractmethod
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Dict, Optional
+from dataclasses import dataclass
 
 from langchain_core.callbacks import (
     AsyncCallbackManagerForToolRun,
@@ -33,6 +34,15 @@ from src.config.logging import get_logger
 from src.config.settings import get_settings
 
 logger = get_logger(__name__)
+
+
+@dataclass
+class ToolSchema:
+    """Tool schema for registration"""
+    name: str
+    description: str
+    parameters: Dict[str, Any]
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class ToolExecutionError(Exception):
@@ -281,3 +291,66 @@ class AgentTool(BaseTool):
                 message=str(exc),
                 cause=exc,
             ) from exc
+
+
+class MCPTool(AgentTool):
+    """
+    Tool wrapper for MCP (Model Context Protocol) servers.
+    
+    Allows MCP tools to be used seamlessly within the ModelX tool ecosystem.
+    Wraps an MCPClient tool and exposes it as a standard AgentTool.
+    """
+    
+    mcp_client: Any = Field(description="MCP client instance")
+    server_name: str = Field(description="MCP server name")
+    mcp_tool_name: str = Field(description="Tool name on the MCP server")
+    tool_schema: Optional[Any] = Field(default=None, exclude=True)
+    
+    # Override to disable retry for MCP tools (handled by MCP layer)
+    max_retries: int = Field(default=0)
+    
+    async def _execute(self, **kwargs: Any) -> Any:
+        """Execute the MCP tool via the client"""
+        return await self.mcp_client.call_tool(
+            self.server_name,
+            self.mcp_tool_name,
+            kwargs,
+        )
+    
+    async def _ensure_schema(self) -> None:
+        """Fetch and cache tool schema from MCP server"""
+        if self.tool_schema is None:
+            self.tool_schema = await self.mcp_client.get_tool_schema(self.server_name, self.mcp_tool_name)
+    
+    @property
+    def description(self) -> str:
+        """Get tool description from MCP schema"""
+        if self.tool_schema:
+            return self.tool_schema.description
+        return f"MCP tool: {self.mcp_tool_name}"
+    
+    @property
+    def parameters(self) -> Dict[str, Any]:
+        """Get tool parameters from MCP schema"""
+        if self.tool_schema:
+            return self.tool_schema.input_schema
+        return {}
+
+    @classmethod
+    def create_from_mcp(
+        cls,
+        mcp_client: Any,
+        server_name: str,
+        tool: Any,  # MCPTool from mcp_client
+    ) -> "MCPTool":
+        """Factory method to create MCPTool from MCP client tool"""
+        instance = cls(
+            name=f"mcp.{server_name}.{tool.name}",
+            mcp_client=mcp_client,
+            server_name=server_name,
+            mcp_tool_name=tool.name,
+            description=tool.description,
+            args_schema=None,  # Will use MCP schema
+        )
+        instance._tool_schema = tool
+        return instance
