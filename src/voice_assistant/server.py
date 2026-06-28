@@ -30,7 +30,7 @@ connected_clients: Set[WebSocket] = set()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan - startup and shutdown"""
-    global voice_assistant, integration
+    global voice_assistant, integration, connected_clients
 
     settings = get_settings()
 
@@ -113,6 +113,7 @@ app.add_middleware(
 
 async def broadcast(message: dict):
     """Broadcast message to all connected WebSocket clients"""
+    global connected_clients
     disconnected = set()
     for client in connected_clients:
         try:
