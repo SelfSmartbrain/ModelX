@@ -5,6 +5,7 @@ Provides dependency injection for database sessions, vector stores,
 and agent instances required by the API routes.
 """
 
+import asyncio
 from typing import AsyncGenerator, Annotated
 from fastapi import Depends
 
@@ -24,23 +25,26 @@ from src.rag.embeddings import EmbeddingService
 from src.rag.retriever import Retriever
 from src.rag.ingestion import IngestionPipeline
 
-# Agent instances (acting as singletons for the application)
-# In a real app, these might be initialized in the lifespan and stored in app.state
-_vector_store = None
-_embedding_service = None
+# Thread-safe singleton initialization
+_vector_store: VectorStoreManager | None = None
+_embedding_service: EmbeddingService | None = None
+_vector_store_lock = asyncio.Lock()
+_embedding_service_lock = asyncio.Lock()
 
 async def get_vector_store() -> VectorStoreManager:
-    """Get the VectorStoreManager singleton."""
+    """Get the VectorStoreManager singleton with thread-safe initialization."""
     global _vector_store
-    if _vector_store is None:
-        _vector_store = VectorStoreManager()
+    async with _vector_store_lock:
+        if _vector_store is None:
+            _vector_store = VectorStoreManager()
     return _vector_store
 
 async def get_embedding_service() -> EmbeddingService:
-    """Get the EmbeddingService singleton."""
+    """Get the EmbeddingService singleton with thread-safe initialization."""
     global _embedding_service
-    if _embedding_service is None:
-        _embedding_service = EmbeddingService()
+    async with _embedding_service_lock:
+        if _embedding_service is None:
+            _embedding_service = EmbeddingService()
     return _embedding_service
 
 async def get_retriever(
