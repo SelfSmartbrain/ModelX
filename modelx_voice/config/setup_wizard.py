@@ -217,7 +217,7 @@ def quick_setup(provider: str, api_key: str, voice: str = "clear") -> bool:
     config.api.api_key = api_key
     config.voice.selected_voice = voice
     
-    from .manager import get_default_model
+    from modelx_voice.brain import get_default_model
     config.api.model = get_default_model(provider)
     
     config_manager.save()
