@@ -49,3 +49,5 @@ Thumbs.db
 tmp/
 __pycache__/
 *.pyc
+*.onnx
+modelx_voice/voices/*.json
