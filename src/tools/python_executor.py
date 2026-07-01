@@ -11,6 +11,7 @@ Executes arbitrary Python code in a subprocess with:
 from __future__ import annotations
 
 import ast
+import base64
 import re
 import subprocess
 import sys
@@ -321,11 +322,12 @@ class PythonExecutorTool(AgentTool):
             A complete Python script string to be run via
             ``python -c``.
         """
-        # Escape the code so it can be embedded safely
-        escaped = code.replace("\\", "\\\\").replace("'", "\\'")
+        # Encode the user code in base64 to avoid escaping issues
+        # This prevents sandbox escape via triple-quote breaking
+        encoded_code = base64.b64encode(code.encode('utf-8')).decode('ascii')
 
         wrapper = textwrap.dedent(f"""\
-            import sys, platform
+            import sys, platform, base64
             # Apply memory limit on Unix-like systems
             if platform.system() != 'Windows':
                 try:
@@ -337,7 +339,7 @@ class PythonExecutorTool(AgentTool):
                 except (ImportError, ValueError, OSError):
                     pass
 
-            _user_code = '''{escaped}'''
+            _user_code = base64.b64decode('{encoded_code}').decode('utf-8')
             try:
                 exec(compile(_user_code, '<sandbox>', 'exec'), {{"__builtins__": __builtins__}})
             except MemoryError:
