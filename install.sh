@@ -3,6 +3,22 @@
 
 set -e
 
+# Parse arguments
+CREATE_DESKTOP=false
+for arg in "$@"; do
+    case $arg in
+        --desktop)
+            CREATE_DESKTOP=true
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: ./install.sh [--desktop]"
+            echo "  --desktop    Create desktop entry (Linux only)"
+            exit 0
+            ;;
+    esac
+done
+
 echo "🎤 Installing ModelX Voice Assistant..."
 
 # Colors
@@ -78,14 +94,14 @@ print('Available voices:', voices)
 " 2>/dev/null || echo "Voice models will be downloaded on first run"
 }
 
-# Create desktop entry (Linux)
+# Create desktop entry (Linux) - optional
 create_desktop_entry() {
-    if [[ "$OS" == "Linux" ]] && [[ -d "$HOME/.local/share/applications" ]]; then
-        cat > "$HOME/.local/share/applications/modelx-voice.desktop" << EOF
+    if [[ "$CREATE_DESKTOP" == true ]] && [[ "$OS" == "Linux" ]] && [[ -d "$HOME/.local/share/applications" ]]; then
+        cat > "$HOME/.local/share/applications/modelx.desktop" << EOF
 [Desktop Entry]
-Name=ModelX Voice Assistant
-Comment=Terminal voice assistant
-Exec=modelx-voice
+Name=ModelX
+Comment=AI Assistant Platform
+Exec=modelx voice
 Terminal=true
 Type=Application
 Categories=Utility;
@@ -106,16 +122,21 @@ main() {
     echo -e "${GREEN}✓ Installation complete!${NC}"
     echo ""
     echo "Next steps:"
-    echo "  1. Run: modelx-voice --setup"
+    echo "  1. Run: modelx --setup"
     echo "  2. Enter your API key when prompted"
     echo "  3. Start talking!"
     echo ""
     echo "Commands:"
-    echo "  modelx-voice              Start voice assistant"
-    echo "  modelx-voice --setup      Run setup wizard"
-    echo "  modelx-voice --test-audio Test audio devices"
-    echo "  modelx-voice --test-api   Test API connection"
-    echo "  modelx-voice --help       Show all options"
+    echo "  modelx              Start voice assistant"
+    echo "  modelx voice        Start voice assistant (explicit)"
+    echo "  modelx --setup      Run setup wizard"
+    echo "  modelx doctor       System diagnostics"
+    echo "  modelx self-test    Run self-tests"
+    echo "  modelx --help       Show all options"
+    if [[ "$CREATE_DESKTOP" != true ]] && [[ "$OS" == "Linux" ]]; then
+        echo ""
+        echo "Tip: Run './install.sh --desktop' to create a desktop launcher"
+    fi
 }
 
 main "$@"
