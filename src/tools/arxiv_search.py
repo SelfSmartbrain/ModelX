@@ -8,6 +8,7 @@ abstract, publication date, PDF URL, and a relevance score.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import arxiv
@@ -102,26 +103,29 @@ class ArxivSearchTool(AgentTool):
             num_retries=2,
         )
 
-        results: list[dict[str, Any]] = []
-        query_terms = set(query.lower().split())
+        # Run the synchronous arxiv search in a thread pool to avoid blocking
+        def _sync_search():
+            results: list[dict[str, Any]] = []
+            query_terms = set(query.lower().split())
+            for paper in client.results(search):
+                relevance = self._compute_relevance(query_terms, paper.title, paper.summary)
+                results.append(
+                    {
+                        "title": paper.title,
+                        "authors": [author.name for author in paper.authors],
+                        "abstract": paper.summary.strip(),
+                        "published": paper.published.isoformat() if paper.published else None,
+                        "pdf_url": paper.pdf_url,
+                        "entry_id": paper.entry_id,
+                        "primary_category": paper.primary_category,
+                        "relevance_score": relevance,
+                    }
+                )
+            # Sort by relevance descending
+            results.sort(key=lambda r: r["relevance_score"], reverse=True)
+            return results
 
-        for paper in client.results(search):
-            relevance = self._compute_relevance(query_terms, paper.title, paper.summary)
-            results.append(
-                {
-                    "title": paper.title,
-                    "authors": [author.name for author in paper.authors],
-                    "abstract": paper.summary.strip(),
-                    "published": paper.published.isoformat() if paper.published else None,
-                    "pdf_url": paper.pdf_url,
-                    "entry_id": paper.entry_id,
-                    "primary_category": paper.primary_category,
-                    "relevance_score": relevance,
-                }
-            )
-
-        # Sort by relevance descending
-        results.sort(key=lambda r: r["relevance_score"], reverse=True)
+        results = await asyncio.get_event_loop().run_in_executor(None, _sync_search)
 
         log.info("arxiv.search.complete", result_count=len(results))
         return results
