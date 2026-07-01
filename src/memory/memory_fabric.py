@@ -237,9 +237,37 @@ class MemoryFabric:
         min_importance: float,
     ) -> List[MemoryEntry]:
         """Query semantic/vector memory (Qdrant)"""
-        # Placeholder for Qdrant query
-        # In full implementation, would use vector similarity search
-        return []
+        try:
+            # Check if backend has search method
+            if hasattr(backend, 'search'):
+                # Assume backend is a Qdrant client or similar
+                from src.rag.embeddings import EmbeddingService
+                # Get embedding for query
+                embedding_service = EmbeddingService()
+                query_embedding = await embedding_service.embed_text(query)
+                
+                results = await backend.search(
+                    collection_name="memories",
+                    query_vector=query_embedding,
+                    limit=limit,
+                    score_threshold=min_importance,
+                )
+                
+                entries = []
+                for result in results:
+                    entries.append(MemoryEntry(
+                        content=result.payload.get("content", ""),
+                        memory_type=MemoryType.SEMANTIC,
+                        metadata=result.payload,
+                        importance=result.score,
+                        timestamp=result.payload.get("timestamp", 0),
+                        embedding=result.vector,
+                    ))
+                return entries
+            return []
+        except Exception as e:
+            logger.error(f"Error querying semantic memory: {e}")
+            return []
     
     async def _query_working(
         self,
@@ -248,9 +276,31 @@ class MemoryFabric:
         limit: int,
     ) -> List[MemoryEntry]:
         """Query working memory (Redis)"""
-        # Placeholder for Redis query
-        # In full implementation, would use Redis key search
-        return []
+        try:
+            # Check if backend has search method
+            if hasattr(backend, 'keys'):
+                # Search for keys matching query pattern
+                pattern = f"*{query}*"
+                keys = await backend.keys(pattern)
+                
+                entries = []
+                for key in keys[:limit]:
+                    value = await backend.get(key)
+                    if value:
+                        import json
+                        data = json.loads(value)
+                        entries.append(MemoryEntry(
+                            content=data.get("content", ""),
+                            memory_type=MemoryType.WORKING,
+                            metadata=data.get("metadata", {}),
+                            importance=data.get("importance", 0.5),
+                            timestamp=data.get("timestamp", 0),
+                        ))
+                return entries
+            return []
+        except Exception as e:
+            logger.error(f"Error querying working memory: {e}")
+            return []
     
     async def _query_postgres(
         self,
@@ -260,9 +310,29 @@ class MemoryFabric:
         min_importance: float,
     ) -> List[MemoryEntry]:
         """Query episodic/procedural memory (PostgreSQL)"""
-        # Placeholder for PostgreSQL query
-        # In full implementation, would use SQL with text search
-        return []
+        try:
+            # Use the memory repository if available
+            if hasattr(backend, 'search_memories'):
+                results = await backend.search_memories(
+                    query=query,
+                    limit=limit,
+                    min_importance=min_importance,
+                )
+                
+                entries = []
+                for result in results:
+                    entries.append(MemoryEntry(
+                        content=result.content,
+                        memory_type=MemoryType.EPISODIC,
+                        metadata=result.metadata_,
+                        importance=result.importance_score,
+                        timestamp=result.created_at.timestamp() if result.created_at else 0,
+                    ))
+                return entries
+            return []
+        except Exception as e:
+            logger.error(f"Error querying PostgreSQL memory: {e}")
+            return []
     
     async def _query_structural(
         self,
@@ -271,9 +341,31 @@ class MemoryFabric:
         limit: int,
     ) -> List[MemoryEntry]:
         """Query structural memory (Neo4j)"""
-        # Placeholder for Neo4j query
-        # In full implementation, would use Cypher queries
-        return []
+        try:
+            # Check if backend has query method
+            if hasattr(backend, 'execute_query'):
+                cypher_query = """
+                MATCH (n) 
+                WHERE n.content CONTAINS $query
+                RETURN n.content as content, n.importance as importance, n.metadata as metadata, n.created_at as timestamp
+                LIMIT $limit
+                """
+                results = await backend.execute_query(cypher_query, {"query": query, "limit": limit})
+                
+                entries = []
+                for record in results:
+                    entries.append(MemoryEntry(
+                        content=record["content"],
+                        memory_type=MemoryType.STRUCTURAL,
+                        metadata=record.get("metadata", {}),
+                        importance=record.get("importance", 0.5),
+                        timestamp=record.get("timestamp", 0),
+                    ))
+                return entries
+            return []
+        except Exception as e:
+            logger.error(f"Error querying structural memory: {e}")
+            return []
     
     async def store(
         self,
@@ -327,9 +419,92 @@ class MemoryFabric:
         entry: MemoryEntry,
     ) -> str:
         """Store in a specific backend"""
-        # Placeholder implementation
-        # In full implementation, would store in the appropriate backend
-        return f"mem_{datetime.now().timestamp()}"
+        try:
+            import uuid
+            memory_id = str(uuid.uuid4())
+            
+            if memory_type == MemoryType.SEMANTIC:
+                # Store in Qdrant
+                if hasattr(backend, 'upsert'):
+                    from src.rag.embeddings import EmbeddingService
+                    embedding_service = EmbeddingService()
+                    embedding = await embedding_service.embed_text(entry.content)
+                    
+                    await backend.upsert(
+                        collection_name="memories",
+                        points=[{
+                            "id": memory_id,
+                            "vector": embedding,
+                            "payload": {
+                                "content": entry.content,
+                                "metadata": entry.metadata,
+                                "importance": entry.importance,
+                                "timestamp": entry.timestamp,
+                                "source": entry.source,
+                                "tags": entry.tags,
+                            }
+                        }]
+                    )
+                    return memory_id
+                    
+            elif memory_type == MemoryType.WORKING:
+                # Store in Redis
+                if hasattr(backend, 'set'):
+                    import json
+                    await backend.set(
+                        f"memory:{memory_id}",
+                        json.dumps({
+                            "content": entry.content,
+                            "metadata": entry.metadata,
+                            "importance": entry.importance,
+                            "timestamp": entry.timestamp,
+                            "source": entry.source,
+                            "tags": entry.tags,
+                        }),
+                        ex=3600  # 1 hour TTL
+                    )
+                    return memory_id
+                    
+            elif memory_type in (MemoryType.EPISODIC, MemoryType.PROCEDURAL):
+                # Store in PostgreSQL via repository
+                if hasattr(backend, 'store_memory'):
+                    memory_id = await backend.store_memory(
+                        user_id=uuid.UUID(entry.metadata.get("user_id", "00000000-0000-0000-0000-000000000000")),
+                        content=entry.content,
+                        memory_type=memory_type,
+                        metadata=entry.metadata,
+                        importance_score=entry.importance,
+                    )
+                    return str(memory_id)
+                    
+            elif memory_type == MemoryType.STRUCTURAL:
+                # Store in Neo4j
+                if hasattr(backend, 'execute_query'):
+                    cypher = """
+                    CREATE (m:Memory {
+                        id: $id,
+                        content: $content,
+                        importance: $importance,
+                        timestamp: $timestamp,
+                        metadata: $metadata
+                    })
+                    RETURN m.id as id
+                    """
+                    await backend.execute_query(cypher, {
+                        "id": memory_id,
+                        "content": entry.content,
+                        "importance": entry.importance,
+                        "timestamp": entry.timestamp,
+                        "metadata": json.dumps(entry.metadata),
+                    })
+                    return memory_id
+            
+            # Fallback - just return ID
+            return memory_id
+            
+        except Exception as e:
+            logger.error(f"Error storing in {memory_type.value}: {e}")
+            return f"mem_{datetime.now().timestamp()}"
     
     async def delete(
         self,
@@ -357,10 +532,35 @@ class MemoryFabric:
             return False
         
         try:
-            # Placeholder for deletion
-            # In full implementation, would delete from the backend
-            self._cache.clear()
-            return True
+            if memory_type == MemoryType.SEMANTIC:
+                if hasattr(backend, 'delete'):
+                    await backend.delete(
+                        collection_name="memories",
+                        points_selector=[memory_id]
+                    )
+                    self._cache.clear()
+                    return True
+                    
+            elif memory_type == MemoryType.WORKING:
+                if hasattr(backend, 'delete'):
+                    await backend.delete(f"memory:{memory_id}")
+                    self._cache.clear()
+                    return True
+                    
+            elif memory_type in (MemoryType.EPISODIC, MemoryType.PROCEDURAL):
+                if hasattr(backend, 'delete'):
+                    await backend.delete(memory_id)
+                    self._cache.clear()
+                    return True
+                    
+            elif memory_type == MemoryType.STRUCTURAL:
+                if hasattr(backend, 'execute_query'):
+                    cypher = "MATCH (m:Memory {id: $id}) DELETE m"
+                    await backend.execute_query(cypher, {"id": memory_id})
+                    self._cache.clear()
+                    return True
+            
+            return False
             
         except Exception as e:
             logger.error(f"Error deleting from {memory_type.value}: {e}")
