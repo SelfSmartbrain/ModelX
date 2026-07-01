@@ -8,6 +8,7 @@ Handles encrypted PDFs gracefully.
 
 from __future__ import annotations
 
+import asyncio
 import os
 from typing import Any
 
@@ -107,96 +108,102 @@ class PDFIngestionTool(AgentTool):
                 ),
             )
 
-        # --- Read the PDF ---
-        try:
-            reader = PdfReader(file_path)
-        except PdfReadError as exc:
-            raise ToolExecutionError(
-                tool_name=self.name,
-                message=f"Failed to parse PDF: {exc}",
-                cause=exc,
-            ) from exc
-
-        # --- Handle encryption ---
-        if reader.is_encrypted:
+        # Run the synchronous PDF reading in a thread pool to avoid blocking
+        def _sync_pdf_read():
+            # --- Read the PDF ---
             try:
-                # Attempt decryption with an empty password (common for
-                # restriction-only encrypted PDFs).
-                if not reader.decrypt(""):
+                reader = PdfReader(file_path)
+            except PdfReadError as exc:
+                raise ToolExecutionError(
+                    tool_name=self.name,
+                    message=f"Failed to parse PDF: {exc}",
+                    cause=exc,
+                ) from exc
+
+            # --- Handle encryption ---
+            if reader.is_encrypted:
+                try:
+                    # Attempt decryption with an empty password (common for
+                    # restriction-only encrypted PDFs).
+                    if not reader.decrypt(""):
+                        return {
+                            "file_path": file_path,
+                            "error": (
+                                "PDF is encrypted with a non-empty password. "
+                                "Cannot extract text without the correct password."
+                            ),
+                            "metadata": {},
+                            "pages": [],
+                            "total_pages": 0,
+                            "total_characters": 0,
+                        }
+                except Exception:
                     return {
                         "file_path": file_path,
-                        "error": (
-                            "PDF is encrypted with a non-empty password. "
-                            "Cannot extract text without the correct password."
-                        ),
+                        "error": "PDF is encrypted and could not be decrypted.",
                         "metadata": {},
                         "pages": [],
                         "total_pages": 0,
                         "total_characters": 0,
                     }
-            except Exception:
-                return {
-                    "file_path": file_path,
-                    "error": "PDF is encrypted and could not be decrypted.",
-                    "metadata": {},
-                    "pages": [],
-                    "total_pages": 0,
-                    "total_characters": 0,
+
+            # --- Extract metadata ---
+            raw_meta = reader.metadata
+            metadata: dict[str, Any] = {}
+            if raw_meta:
+                metadata = {
+                    "title": raw_meta.title or None,
+                    "author": raw_meta.author or None,
+                    "subject": raw_meta.subject or None,
+                    "creator": raw_meta.creator or None,
+                    "producer": raw_meta.producer or None,
+                    "creation_date": str(raw_meta.creation_date) if raw_meta.creation_date else None,
+                    "modification_date": (
+                        str(raw_meta.modification_date) if raw_meta.modification_date else None
+                    ),
                 }
 
-        # --- Extract metadata ---
-        raw_meta = reader.metadata
-        metadata: dict[str, Any] = {}
-        if raw_meta:
-            metadata = {
-                "title": raw_meta.title or None,
-                "author": raw_meta.author or None,
-                "subject": raw_meta.subject or None,
-                "creator": raw_meta.creator or None,
-                "producer": raw_meta.producer or None,
-                "creation_date": str(raw_meta.creation_date) if raw_meta.creation_date else None,
-                "modification_date": (
-                    str(raw_meta.modification_date) if raw_meta.modification_date else None
-                ),
+            # --- Extract text page by page ---
+            pages: list[dict[str, Any]] = []
+            total_chars = 0
+
+            for page_num, page in enumerate(reader.pages, start=1):
+                try:
+                    text = page.extract_text() or ""
+                except Exception as exc:
+                    log.warning(
+                        "pdf_ingestion.page_error",
+                        page=page_num,
+                        error=str(exc),
+                    )
+                    text = f"[Error extracting page {page_num}: {exc}]"
+
+                total_chars += len(text)
+                pages.append(
+                    {
+                        "page_number": page_num,
+                        "text": text,
+                        "character_count": len(text),
+                    }
+                )
+
+            result: dict[str, Any] = {
+                "file_path": file_path,
+                "metadata": metadata,
+                "pages": pages,
+                "total_pages": len(pages),
+                "total_characters": total_chars,
+                "file_size_bytes": file_size,
             }
 
-        # --- Extract text page by page ---
-        pages: list[dict[str, Any]] = []
-        total_chars = 0
+            return result
 
-        for page_num, page in enumerate(reader.pages, start=1):
-            try:
-                text = page.extract_text() or ""
-            except Exception as exc:
-                log.warning(
-                    "pdf_ingestion.page_error",
-                    page=page_num,
-                    error=str(exc),
-                )
-                text = f"[Error extracting page {page_num}: {exc}]"
-
-            total_chars += len(text)
-            pages.append(
-                {
-                    "page_number": page_num,
-                    "text": text,
-                    "character_count": len(text),
-                }
-            )
-
-        result: dict[str, Any] = {
-            "file_path": file_path,
-            "metadata": metadata,
-            "pages": pages,
-            "total_pages": len(pages),
-            "total_characters": total_chars,
-            "file_size_bytes": file_size,
-        }
+        result = await asyncio.get_event_loop().run_in_executor(None, _sync_pdf_read)
 
         log.info(
             "pdf_ingestion.complete",
-            total_pages=len(pages),
-            total_characters=total_chars,
+            total_pages=result.get("total_pages", 0),
+            total_characters=result.get("total_characters", 0),
         )
 
         return result
