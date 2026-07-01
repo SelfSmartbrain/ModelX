@@ -188,6 +188,22 @@ class AgentStateDict(TypedDict, total=False):
     best_strategy: dict[str, Any] | None
     optimization_recommendations: list[str]
 
+    # World Model (Phase 9)
+    hypotheses: list[dict[str, Any]]
+    beliefs: list[dict[str, Any]]
+    experiment_results: list[dict[str, Any]]
+    patterns: list[dict[str, Any]]
+    causal_links: list[dict[str, Any]]
+    experiments: list[dict[str, Any]]
+
+    # Project Execution (Phase 12)
+    project: dict[str, Any] | None
+    opportunities: list[dict[str, Any]]
+    tasks: list[dict[str, Any]]
+
+    # Evolution (Phase 10G)
+    genome_data: dict[str, Any]
+
     # Output
     final_report: str | None
 
@@ -246,5 +262,19 @@ def create_initial_state(
         learning_velocity=0.0,
         best_strategy=None,
         optimization_recommendations=[],
+        # World Model (Phase 9)
+        hypotheses=[],
+        beliefs=[],
+        experiment_results=[],
+        patterns=[],
+        causal_links=[],
+        experiments=[],
+        # Project Execution (Phase 12)
+        project=None,
+        opportunities=[],
+        tasks=[],
+        # Evolution (Phase 10G)
+        genome_data={},
+        # Output
         final_report=None,
     )
