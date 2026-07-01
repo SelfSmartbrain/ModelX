@@ -4,7 +4,7 @@ Provides persistence for project runs, failures, experiments, and interactions.
 Implements checkpointing for long-horizon task resumption.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from sqlalchemy import Column, Integer, String, DateTime, JSON, Text
 from sqlalchemy.ext.declarative import declarative_base
@@ -14,11 +14,16 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 Base = declarative_base()
 
 
+def utcnow() -> datetime:
+    """Get current UTC time as timezone-aware datetime."""
+    return datetime.now(timezone.utc)
+
+
 class EpisodicMemory(Base):
     __tablename__ = "episodic_memory"
     id = Column(Integer, primary_key=True, autoincrement=True)
     project_id = Column(String, nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime(timezone=True), default=utcnow)
     data = Column(JSON, nullable=False)  # raw event payload
     outcome = Column(String, nullable=True)
 
@@ -36,7 +41,7 @@ class TaskCheckpoint(Base):
     working_memory = Column(JSON, nullable=True)  # compressed working memory
     progress = Column(JSON, nullable=True)  # task progress info
     checkpoint_metadata = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
     parent_checkpoint_id = Column(Integer, nullable=True)  # for checkpoint chains
 
     def __repr__(self):
