@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from src.config.logging import get_logger
@@ -13,7 +13,7 @@ async def environment_analysis(state: Dict[str, Any]) -> Dict[str, Any]:
     """Node for analyzing the environment context."""
     logger.info("Executing environment_analysis node")
     # Simulate environment analysis
-    return {"environment_context": {"status": "analyzed", "timestamp": datetime.utcnow().isoformat()}}
+    return {"environment_context": {"status": "analyzed", "timestamp": datetime.now(timezone.utc).isoformat()}}
 
 async def opportunity_detection(state: Dict[str, Any]) -> Dict[str, Any]:
     """Node for detecting project opportunities."""
@@ -55,7 +55,7 @@ async def execution(state: Dict[str, Any]) -> Dict[str, Any]:
 async def checkpointing(state: Dict[str, Any]) -> Dict[str, Any]:
     """Node for checkpointing project state."""
     logger.info("Executing checkpointing node")
-    return {"checkpoint": {"id": str(uuid.uuid4()), "timestamp": datetime.utcnow().isoformat()}}
+    return {"checkpoint": {"id": str(uuid.uuid4()), "timestamp": datetime.now(timezone.utc).isoformat()}}
 
 async def failure_recovery(state: Dict[str, Any]) -> Dict[str, Any]:
     """Node for recovering from failures."""
