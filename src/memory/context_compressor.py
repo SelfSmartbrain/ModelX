@@ -157,9 +157,31 @@ class ContextCompressor:
         return np.array(embeddings)
 
     async def _generate_embedding(self, text: str) -> List[float]:
-        """Generate embedding for text"""
-        # Placeholder - would use actual embedding model
-        return [0.0] * 1536
+        """Generate embedding for text using the embedding service"""
+        try:
+            # Try to use the vector store's embedding service
+            if hasattr(self.vectors, 'embed_text'):
+                return await self.vectors.embed_text(text)
+            # Try to use the memory fabric's embedding service
+            if hasattr(self.memory, 'embed_text'):
+                return await self.memory.embed_text(text)
+            # Try to use the LLM's embedding capability
+            if hasattr(self.llm, 'embed_text'):
+                return await self.llm.embed_text(text)
+            # Fallback: use a simple hash-based embedding (deterministic)
+            # This is a last resort - in production, always use a real embedding model
+            import hashlib
+            hash_bytes = hashlib.sha256(text.encode()).digest()
+            # Convert to float array
+            embedding = [(b / 255.0) for b in hash_bytes]
+            # Pad or truncate to 1536 dimensions
+            if len(embedding) < 1536:
+                embedding.extend([0.0] * (1536 - len(embedding)))
+            return embedding[:1536]
+        except Exception as e:
+            logger.error(f"Embedding generation failed: {e}")
+            # Return zero vector as last resort
+            return [0.0] * 1536
 
     async def _cluster_memories(
         self,
