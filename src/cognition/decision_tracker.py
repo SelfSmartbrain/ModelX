@@ -15,7 +15,7 @@ from __future__ import annotations
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import Any, Optional, Dict, List
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import defaultdict
 
 from src.config.logging import get_logger
@@ -118,7 +118,7 @@ class DecisionTracker:
             decision_id=str(uuid.uuid4()),
             decision_type=decision_type,
             domain=domain,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             objective_id=objective_id,
             task_id=task_id,
             prompt=prompt,
@@ -206,7 +206,7 @@ class DecisionTracker:
             Dict with ratios for each decision type (sums to 1.0).
         """
         if window_minutes:
-            cutoff = datetime.utcnow() - timedelta(minutes=window_minutes)
+            cutoff = datetime.now(timezone.utc) - timedelta(minutes=window_minutes)
             recent_decisions = [d for d in self.decisions if d.timestamp >= cutoff]
         else:
             recent_decisions = self.decisions
@@ -310,7 +310,7 @@ class DecisionTracker:
         
         Returns the number of decisions removed.
         """
-        cutoff = datetime.utcnow() - timedelta(minutes=keep_minutes)
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=keep_minutes)
         original_count = len(self.decisions)
         
         self.decisions = [d for d in self.decisions if d.timestamp >= cutoff]
