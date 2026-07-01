@@ -25,6 +25,14 @@ from src.tools.base import MCPTool
 from src.autonomous_development.architecture_evolver import ArchitectureEvolver
 from src.config.settings import get_settings
 
+# Validation framework imports
+from tests.validation.run_validation import ValidationRunner
+from tests.validation.framework import ValidationFramework
+from tests.validation.ablation import AblationStudy
+from tests.validation.benchmarks import CodingBenchmark, CodingTask, CodingTaskType
+from tests.validation.long_horizon import LongHorizonTester, LongHorizonConfig
+from tests.validation.cost_analysis import CostAnalyzer
+
 logger = logging.getLogger(__name__)
 
 
@@ -100,11 +108,54 @@ class VoiceAssistantIntegration:
         # 6. Self-Improvement
         await self._init_self_improvement()
 
+        # 7. Validation Framework
+        self._init_validation()
+
         # Register event handlers
         self._register_handlers()
 
         self._initialized = True
         logger.info("Voice Assistant Integration ready!")
+
+    def _register_handlers(self):
+        """Register cognitive bus event handlers"""
+        self._cognitive_bus.subscribe(
+            CognitiveEventType.USER_SPEECH,
+            self._handle_user_speech
+        )
+        self._cognitive_bus.subscribe(
+            CognitiveEventType.PLAN_COMPLETED,
+            self._handle_plan_completed
+        )
+        self._cognitive_bus.subscribe(
+            CognitiveEventType.DRIFT_DETECTED,
+            self._handle_drift_detected
+        )
+        self._cognitive_bus.subscribe(
+            CognitiveEventType.MEMORY_COMPRESSED,
+            self._handle_memory_compressed
+        )
+        
+        # Register validation event handlers
+        self._cognitive_bus.subscribe(
+            CognitiveEventType.VALIDATION_REQUESTED,
+            self._handle_validation_requested
+        )
+        self._cognitive_bus.subscribe(
+            CognitiveEventType.VALIDATION_COMPLETED,
+            self._handle_validation_completed
+        )
+
+    def _init_validation(self):
+        """Initialize validation framework for voice commands"""
+        try:
+            from pathlib import Path
+            self._validation_framework = ValidationFramework(output_dir=Path("validation_results"))
+            self._validation_runner = ValidationRunner(output_dir=Path("validation_results"))
+            logger.info("Validation framework initialized")
+        except Exception as e:
+            logger.warning(f"Could not initialize validation framework: {e}")
+            self._validation_runner = None
 
     async def _init_memory(self):
         """Initialize memory systems"""
@@ -131,15 +182,6 @@ class VoiceAssistantIntegration:
         )
 
     async def _init_reasoning(self):
-        """Initialize reasoning and planning"""
-        from src.reasoning.planner import Planner
-
-        llm = self._get_llm_client()
-
-        self._planner = Planner(llm_client=llm, memory_fabric=self._memory_fabric)
-        await self._planner.initialize(enable_drift_detection=True)
-
-        # Drift detector and replanner are initialized inside planner
         self._drift_detector = self._planner._drift_detector
         self._replanner = self._planner._replanner
 
@@ -214,73 +256,341 @@ class VoiceAssistantIntegration:
             )
             await self._architecture_evolver.initialize()
 
-    def _register_handlers(self):
-        """Register cognitive bus event handlers"""
-        self._cognitive_bus.subscribe(
-            CognitiveEventType.USER_SPEECH,
-            self._handle_user_speech
-        )
-        self._cognitive_bus.subscribe(
-            CognitiveEventType.PLAN_COMPLETED,
-            self._handle_plan_completed
-        )
-        self._cognitive_bus.subscribe(
-            CognitiveEventType.DRIFT_DETECTED,
-            self._handle_drift_detected
-        )
-        self._cognitive_bus.subscribe(
-            CognitiveEventType.MEMORY_COMPRESSED,
-            self._handle_memory_compressed
-        )
+    async def _handle_validation_requested(self, event):
+        """Handle validation requested event"""
+        logger.info(f"Validation requested: {event.payload}")
+
+    async def _handle_validation_completed(self, event):
+        """Handle validation completed event"""
+        logger.info(f"Validation completed: {event.payload}")
+
+    # Voice command handlers for validation
+    async def _handle_validation_command(self, command: str) -> str:
+        """Process validation-related voice commands"""
+        command = command.lower().strip()
+        
+        if not self._validation_runner:
+            return "Validation framework is not available. Please check the installation."
+        
+        # Quick validation run
+        if "quick" in command and "validat" in command:
+            return await self._run_quick_validation()
+        
+        # Full validation suite
+        if "full" in command and "validat" in command:
+            return await self._run_full_validation()
+        
+        # Memory ablation
+        if "memory ablation" in command or "ablation memory" in command:
+            return await self._run_memory_ablation()
+        
+        # Concept ablation
+        if "concept ablation" in command or "ablation concept" in command:
+            return await self._run_concept_ablation()
+        
+        # World model ablation
+        if "world model ablation" in command or "ablation world model" in command:
+            return await self._run_world_model_ablation()
+        
+        # Governance ablation
+        if "governance ablation" in command or "ablation governance" in command:
+            return await self._run_governance_ablation()
+        
+        # Coding benchmark
+        if "coding benchmark" in command or "benchmark coding" in command:
+            return await self._run_coding_benchmark()
+        
+        # Cost analysis
+        if "cost analysis" in command or "analyze cost" in command:
+            return await self._run_cost_analysis()
+        
+        # Long horizon test
+        if "long horizon" in command or "long horizon test" in command:
+            return await self._run_long_horizon_test()
+        
+        # Report validation results
+        if "validation report" in command or "show validation" in command:
+            return await self._get_validation_report()
+        
+        return "I didn't understand that validation command. Try: 'run quick validation', 'run memory ablation', 'run coding benchmark', 'run cost analysis', or 'show validation report'."
+
+    async def _run_quick_validation(self) -> str:
+        """Run quick validation suite"""
+        try:
+            # Emit started event
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.VALIDATION_STARTED,
+                source="voice_assistant",
+                payload={"type": "quick"}
+            ))
+            
+            # Run quick validation (fewer trials)
+            summary = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: self._validation_runner.run_all_validations()
+            )
+            
+            # Emit completed event
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.VALIDATION_COMPLETED,
+                source="voice_assistant",
+                payload={"type": "quick", "summary": summary.get("key_findings", [])}
+            ))
+            
+            return self._format_validation_summary(summary)
+        except Exception as e:
+            logger.error(f"Quick validation failed: {e}")
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.VALIDATION_FAILED,
+                source="voice_assistant",
+                payload={"type": "quick", "error": str(e)}
+            ))
+            return f"Quick validation failed: {str(e)}"
+
+    async def _run_full_validation(self) -> str:
+        """Run full validation suite"""
+        try:
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.VALIDATION_STARTED,
+                source="voice_assistant",
+                payload={"type": "full"}
+            ))
+            
+            summary = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: self._validation_runner.run_all_validations()
+            )
+            
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.VALIDATION_COMPLETED,
+                source="voice_assistant",
+                payload={"type": "full", "summary": summary.get("key_findings", [])}
+            ))
+            
+            return self._format_validation_summary(summary)
+        except Exception as e:
+            logger.error(f"Full validation failed: {e}")
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.VALIDATION_FAILED,
+                source="voice_assistant",
+                payload={"type": "full", "error": str(e)}
+            ))
+            return f"Full validation failed: {str(e)}"
+
+    async def _run_memory_ablation(self) -> str:
+        """Run memory ablation study"""
+        try:
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.ABLATION_STARTED,
+                source="voice_assistant",
+                payload={"component": "memory"}
+            ))
+            
+            result = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: self._validation_runner.run_memory_ablation()
+            )
+            
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.ABLATION_COMPLETED,
+                source="voice_assistant",
+                payload={"component": "memory", "result": result}
+            ))
+            
+            impact = result.get("impact_percent", 0)
+            return f"Memory ablation complete. Impact: {impact:.1f}% {'improvement' if impact > 0 else 'degradation'} when memory is enabled."
+        except Exception as e:
+            logger.error(f"Memory ablation failed: {e}")
+            return f"Memory ablation failed: {str(e)}"
+
+    async def _run_concept_ablation(self) -> str:
+        """Run concept system ablation study"""
+        try:
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.ABLATION_STARTED,
+                source="voice_assistant",
+                payload={"component": "concepts"}
+            ))
+            
+            result = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: self._validation_runner.run_concept_ablation()
+            )
+            
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.ABLATION_COMPLETED,
+                source="voice_assistant",
+                payload={"component": "concepts", "result": result}
+            ))
+            
+            impact = result.get("impact_percent", 0)
+            return f"Concept ablation complete. Impact: {impact:.1f}% {'improvement' if impact > 0 else 'degradation'} when concepts are enabled."
+        except Exception as e:
+            logger.error(f"Concept ablation failed: {e}")
+            return f"Concept ablation failed: {str(e)}"
+
+    async def _run_world_model_ablation(self) -> str:
+        """Run world model ablation study"""
+        try:
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.ABLATION_STARTED,
+                source="voice_assistant",
+                payload={"component": "world_model"}
+            ))
+            
+            result = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: self._validation_runner.run_world_model_ablation()
+            )
+            
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.ABLATION_COMPLETED,
+                source="voice_assistant",
+                payload={"component": "world_model", "result": result}
+            ))
+            
+            impact = result.get("impact_percent", 0)
+            return f"World model ablation complete. Impact: {impact:.1f}% {'improvement' if impact > 0 else 'degradation'} when world model is enabled."
+        except Exception as e:
+            logger.error(f"World model ablation failed: {e}")
+            return f"World model ablation failed: {str(e)}"
+
+    async def _run_governance_ablation(self) -> str:
+        """Run governance ablation study"""
+        try:
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.ABLATION_STARTED,
+                source="voice_assistant",
+                payload={"component": "governance"}
+            ))
+            
+            result = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: self._validation_runner.run_governance_ablation()
+            )
+            
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.ABLATION_COMPLETED,
+                source="voice_assistant",
+                payload={"component": "governance", "result": result}
+            ))
+            
+            impact = result.get("impact_percent", 0)
+            return f"Governance ablation complete. Impact: {impact:.1f}% {'improvement' if impact > 0 else 'degradation'} when governance is enabled."
+        except Exception as e:
+            logger.error(f"Governance ablation failed: {e}")
+            return f"Governance ablation failed: {str(e)}"
+
+    async def _run_coding_benchmark(self) -> str:
+        """Run coding capability benchmark"""
+        try:
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.BENCHMARK_STARTED,
+                source="voice_assistant",
+                payload={"benchmark": "coding"}
+            ))
+            
+            result = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: self._validation_runner.run_coding_benchmark()
+            )
+            
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.BENCHMARK_COMPLETED,
+                source="voice_assistant",
+                payload={"benchmark": "coding", "result": result}
+            ))
+            
+            success_rate = result.get("success_rate", 0)
+            avg_time = result.get("average_time_seconds", 0)
+            return f"Coding benchmark complete. Success rate: {success_rate:.1%}, Average time: {avg_time:.1f} seconds per task."
+        except Exception as e:
+            logger.error(f"Coding benchmark failed: {e}")
+            return f"Coding benchmark failed: {str(e)}"
+
+    async def _run_cost_analysis(self) -> str:
+        """Run cost analysis across subsystems"""
+        try:
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.COST_ANALYSIS_STARTED,
+                source="voice_assistant",
+                payload={}
+            ))
+            
+            result = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: self._validation_runner.run_cost_analysis()
+            )
+            
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.COST_ANALYSIS_COMPLETED,
+                source="voice_assistant",
+                payload={"result": result}
+            ))
+            
+            comparison = result.get("comparison", {})
+            total_cost = comparison.get("total_cost_usd", 0)
+            bottlenecks = result.get("bottlenecks", [])
+            bottleneck_names = ", ".join([b["subsystem"] for b in bottlenecks[:3]])
+            return f"Cost analysis complete. Total cost: ${total_cost:.6f}. Top bottlenecks: {bottleneck_names}"
+        except Exception as e:
+            logger.error(f"Cost analysis failed: {e}")
+            return f"Cost analysis failed: {str(e)}"
+
+    async def _run_long_horizon_test(self) -> str:
+        """Run long-horizon autonomy test"""
+        try:
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.LONG_HORIZON_STARTED,
+                source="voice_assistant",
+                payload={}
+            ))
+            
+            result = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: self._validation_runner.run_long_horizon_test()
+            )
+            
+            await self._cognitive_bus.emit(self._cognitive_bus.create_event(
+                event_type=CognitiveEventType.LONG_HORIZON_COMPLETED,
+                source="voice_assistant",
+                payload={"result": result}
+            ))
+            
+            stability = result.get("stability_score", 0)
+            tasks = result.get("total_tasks_completed", 0)
+            return f"Long-horizon test complete. Stability: {stability:.1%}, Tasks completed: {tasks}"
+        except Exception as e:
+            logger.error(f"Long-horizon test failed: {e}")
+            return f"Long-horizon test failed: {str(e)}"
+
+    async def _get_validation_report(self) -> str:
+        """Get validation report summary"""
+        try:
+            import json
+            from pathlib import Path
+            
+            report_path = Path("validation_results/validation_report.md")
+            if not report_path.exists():
+                return "No validation report found. Run a validation first."
+            
+            with open(report_path, "r") as f:
+                content = f.read()
+            
+            # Return first 500 chars for voice
+            return content[:500] + ("..." if len(content) > 500 else "")
+        except Exception as e:
+            logger.error(f"Failed to read validation report: {e}")
+            return f"Failed to read validation report: {str(e)}"
+
+    def _format_validation_summary(self, summary: Dict[str, Any]) -> str:
+        """Format validation summary for voice output"""
+        try:
+            findings = summary.get("key_findings", [])
+            if findings:
+                return "Validation complete. Key findings: " + "; ".join(findings[:3])
+            else:
+                return "Validation complete. Check the validation_results directory for detailed report."
+        except Exception as e:
+            return f"Validation complete but could not format summary: {str(e)}"
 
     async def process_user_input(self, text: str) -> str:
-        """
-        Main entry point: process user speech/text and generate response.
-        This orchestrates all cognitive modules.
-        """
-        # 1. Add to conversation history
-        self.context.conversation_history.append({
-            "role": "user",
-            "content": text
-        })
-
-        # 2. Store in working memory
-        await self._working_memory.add({
-            "type": "user_input",
-            "content": text,
-            "timestamp": asyncio.get_event_loop().time()
-        })
-
-        # 3. Emit to cognitive bus
-        await self._cognitive_bus.emit(self._cognitive_bus.create_event(
-            event_type=CognitiveEventType.USER_SPEECH,
-            source="voice_assistant",
-            payload={"text": text, "user_id": self.context.user_id}
-        ))
-
-        # 4. Determine response strategy
-        response = await self._generate_response(text)
-
-        # 5. Add to conversation history
-        self.context.conversation_history.append({
-            "role": "assistant",
-            "content": response
-        })
-
-        # 6. Store assistant response
-        await self._working_memory.add({
-            "type": "assistant_response",
-            "content": response,
-            "timestamp": asyncio.get_event_loop().time()
-        })
-
-        # 7. Check if context compression needed
-        await self._maybe_compress_context()
-
-        return response
-
-    async def _generate_response(self, user_input: str) -> str:
         """Generate response using appropriate cognitive module"""
+
+        # Check if this is a validation command
+        if await self._is_validation_command(user_input):
+            return await self._handle_validation_command(user_input)
 
         # Check if this is a task requiring planning
         if await self._is_planning_task(user_input):
@@ -296,6 +606,16 @@ class VoiceAssistantIntegration:
 
         # Default: conversational response with context
         return await self._handle_conversation(user_input)
+
+    async def _is_validation_command(self, text: str) -> bool:
+        """Determine if input is a validation command"""
+        validation_keywords = [
+            "validation", "ablation", "benchmark", "cost analysis", 
+            "long horizon", "validate", "run validation", "run ablation",
+            "run benchmark", "run cost", "run long horizon"
+        ]
+        text_lower = text.lower()
+        return any(kw in text_lower for kw in validation_keywords)
 
     async def _is_planning_task(self, text: str) -> bool:
         """Determine if input requires planning"""
@@ -552,12 +872,30 @@ Return JSON with parameters:"""
         from src.tools.shell_tool import ShellTool
         from src.tools.python_executor import PythonExecutorTool
         from src.tools.web_search import WebSearchTool
+        from src.tools.base import AgentTool
+        
+        # Import validation tools
+        from src.tools.validation_tools import (
+            RunValidationTool,
+            RunAblationTool,
+            RunBenchmarkTool,
+            RunCostAnalysisTool,
+            RunLongHorizonTool,
+            GetValidationReportTool,
+        )
 
         tools = [
             FileOperationsTool(),
             ShellTool(),
             PythonExecutorTool(),
             WebSearchTool(),
+            # Validation tools
+            RunValidationTool(),
+            RunAblationTool(),
+            RunBenchmarkTool(),
+            RunCostAnalysisTool(),
+            RunLongHorizonTool(),
+            GetValidationReportTool(),
         ]
         for tool in tools:
             self._tools[tool.name] = tool
